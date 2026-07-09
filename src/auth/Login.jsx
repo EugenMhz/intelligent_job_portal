@@ -36,7 +36,7 @@ const Login = () => {
         </div>
         <div className="flex items-center gap-8">
           <a
-            href="#"
+            href="http://localhost:5174/jobseeker#"
             className="text-sm text-gray-500 hover:text-gray-800 transition-colors"
           >
             Jobs
