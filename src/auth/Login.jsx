@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 const Login = () => {
   const [activeTab, setActiveTab] = useState("seeker");
@@ -35,27 +36,12 @@ const Login = () => {
           </span>
         </div>
         <div className="flex items-center gap-8">
-          <a
-            href="http://localhost:5173/jobseeker#"
-            className="text-sm text-gray-500 hover:text-gray-800 transition-colors"
+          <Link
+            to="/signup"
+            className="bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors inline-flex items-center"
           >
-            Jobs
-          </a>
-          <a
-            href="#"
-            className="text-sm text-gray-500 hover:text-gray-800 transition-colors"
-          >
-            Companies
-          </a>
-          <a
-            href="#"
-            className="text-sm text-gray-500 hover:text-gray-800 transition-colors"
-          >
-            Salaries
-          </a>
-          <button className="bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors">
             Sign Up
-          </button>
+          </Link>
         </div>
       </nav>
 
@@ -125,11 +111,10 @@ const Login = () => {
             <div className="flex bg-gray-100 rounded-xl p-1 gap-1 mb-6">
               <button
                 onClick={() => setActiveTab("seeker")}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${
-                  activeTab === "seeker"
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === "seeker"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+                  }`}
               >
                 <svg
                   className="w-4 h-4"
@@ -145,11 +130,10 @@ const Login = () => {
               </button>
               <button
                 onClick={() => setActiveTab("recruiter")}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${
-                  activeTab === "recruiter"
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === "recruiter"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+                  }`}
               >
                 <svg
                   className="w-4 h-4"
@@ -264,9 +248,11 @@ const Login = () => {
             </label>
 
             {/* Sign In Button */}
-            <button className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded-xl text-sm transition-colors mb-5">
-              Sign in to your account
-            </button>
+            <Link to="/jobseeker" className="w-full block mb-5">
+              <button className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded-xl text-sm transition-colors mb-5">
+                Sign in to your account
+              </button>
+            </Link>
 
             {/* Divider */}
             <div className="flex items-center gap-3 mb-4">
@@ -301,12 +287,12 @@ const Login = () => {
             {/* Sign Up Link */}
             <p className="text-center text-sm text-gray-400">
               Don't have an account?{" "}
-              <a
-                href="#"
+              <Link
+                to="/signup"
                 className="text-purple-600 font-semibold hover:text-purple-700"
               >
                 Sign up
-              </a>
+              </Link>
             </p>
           </div>
         </div>

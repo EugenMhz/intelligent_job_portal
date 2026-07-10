@@ -27,7 +27,6 @@ const JOBS = [
       { name: "Tailwind CSS", matched: false },
     ],
     match: 98,
-    fit: "Excellent Fit",
     salary: "40k - 60k",
   },
   {
@@ -44,7 +43,6 @@ const JOBS = [
       { name: "UI/UX", matched: false },
     ],
     match: 82,
-    fit: "Good Fit",
     salary: "20k - 45k",
   },
   {
@@ -61,7 +59,6 @@ const JOBS = [
       { name: "PyTorch", matched: false },
     ],
     match: 65,
-    fit: "Needs Review",
     salary: "50k - 70k",
   },
 ];
@@ -74,23 +71,12 @@ const SKILL_OPTIONS = [
   { name: "Python", active: false },
 ];
 
-const fitStyles = {
-  "Excellent Fit": "text-emerald-600",
-  "Good Fit": "text-violet-600",
-  "Needs Review": "text-amber-600",
-};
-
-function MatchBar({ percent, fit }) {
+function MatchBar({ percent }) {
   return (
     <div className="flex-1 min-w-[140px]">
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-sm font-semibold text-violet-600">
           {percent}% Match
-        </span>
-        <span
-          className={`text-[11px] font-semibold tracking-wide uppercase ${fitStyles[fit]}`}
-        >
-          {fit}
         </span>
       </div>
       <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
@@ -106,7 +92,10 @@ function MatchBar({ percent, fit }) {
 function JobCard({ job, bookmarked, onToggleBookmark }) {
   const Icon = job.icon;
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+    <div
+      onClick={() => window.location.href = '/jobdescription'}
+      className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 cursor-pointer hover:border-violet-200 hover:shadow-md transition-all group"
+    >
       <div className="flex items-start gap-4">
         <div
           className={`w-12 h-12 rounded-xl ${job.iconBg} flex items-center justify-center shrink-0`}
@@ -117,7 +106,7 @@ function JobCard({ job, bookmarked, onToggleBookmark }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h3 className="text-[17px] font-bold text-gray-900">
+              <h3 className="text-[17px] font-bold text-gray-900 group-hover:text-violet-600 transition-colors">
                 {job.title}
               </h3>
               <p className="text-sm text-gray-500 mt-0.5">
@@ -125,9 +114,12 @@ function JobCard({ job, bookmarked, onToggleBookmark }) {
               </p>
             </div>
             <button
-              onClick={() => onToggleBookmark(job.id)}
+              onClick={(e) => {
+                e.stopPropagation(); // Prevents the card click event
+                onToggleBookmark(job.id);
+              }}
               aria-label={bookmarked ? "Remove bookmark" : "Save job"}
-              className="text-gray-300 hover:text-violet-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 rounded"
+              className="text-gray-300 hover:text-violet-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 rounded z-10 relative"
             >
               <Bookmark
                 className="w-5 h-5"
@@ -141,11 +133,10 @@ function JobCard({ job, bookmarked, onToggleBookmark }) {
             {job.skills.map((s) => (
               <span
                 key={s.name}
-                className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${
-                  s.matched
+                className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${s.matched
                     ? "bg-emerald-50 text-emerald-700"
                     : "bg-gray-100 text-gray-600"
-                }`}
+                  }`}
               >
                 {s.matched && <Check className="w-3 h-3" strokeWidth={2.5} />}
                 {s.name}
@@ -154,12 +145,15 @@ function JobCard({ job, bookmarked, onToggleBookmark }) {
           </div>
 
           <div className="flex items-center gap-6 mt-5">
-            <MatchBar percent={job.match} fit={job.fit} />
+            <MatchBar percent={job.match} />
             <div className="flex items-center gap-4 shrink-0">
               <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">
                 {job.salary}
               </span>
-              <button className="bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 whitespace-nowrap">
+              <button
+                onClick={(e) => e.stopPropagation()} // Prevents the card click event
+                className="bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 whitespace-nowrap z-10 relative"
+              >
                 Apply Now
               </button>
             </div>
@@ -258,11 +252,10 @@ const JobBoard = () => {
                       >
                         <span
                           onClick={() => setRole(r)}
-                          className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
-                            role === r
+                          className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${role === r
                               ? "bg-violet-600 border-violet-600"
                               : "border-gray-300"
-                          }`}
+                            }`}
                         >
                           {role === r && (
                             <Check
@@ -307,27 +300,16 @@ const JobBoard = () => {
                       <button
                         key={s.name}
                         onClick={() => toggleSkill(s.name)}
-                        className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
-                          s.active
+                        className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${s.active
                             ? "bg-violet-100 text-violet-700 border-violet-200"
                             : "bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-300"
-                        }`}
+                          }`}
                       >
                         {s.name}
                       </button>
                     ))}
                   </div>
                 </div>
-              </div>
-
-              <div className="bg-gradient-to-br from-violet-600 to-violet-700 rounded-2xl p-6 text-white">
-                <h3 className="font-bold mb-2">Pro Insights</h3>
-                <p className="text-sm text-violet-100 leading-relaxed mb-4">
-                  Users with Auto-Apply enabled get hired 3x faster on average.
-                </p>
-                <button className="w-full bg-white text-violet-700 font-semibold text-sm py-2.5 rounded-lg hover:bg-violet-50 transition-colors">
-                  Enable Premium
-                </button>
               </div>
             </aside>
 

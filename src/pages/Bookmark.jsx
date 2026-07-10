@@ -27,7 +27,6 @@ const INITIAL_SAVED = [
       { name: "Tailwind CSS", matched: false },
     ],
     match: 98,
-    fit: "Excellent Fit",
     salary: "40k - 60k",
     savedLabel: "Saved 2 days ago",
   },
@@ -45,7 +44,6 @@ const INITIAL_SAVED = [
       { name: "UI/UX", matched: false },
     ],
     match: 82,
-    fit: "Good Fit",
     salary: "20k - 45k",
     savedLabel: "Saved 4 days ago",
   },
@@ -63,7 +61,6 @@ const INITIAL_SAVED = [
       { name: "Kubernetes", matched: false },
     ],
     match: 74,
-    fit: "Good Fit",
     salary: "50k - 70k",
     savedLabel: "Saved 6 days ago",
   },
@@ -81,7 +78,6 @@ const INITIAL_SAVED = [
       { name: "Docker", matched: false },
     ],
     match: 88,
-    fit: "Excellent Fit",
     salary: "60k - 90k",
     savedLabel: "Saved 1 week ago",
   },
@@ -99,29 +95,17 @@ const INITIAL_SAVED = [
       { name: "PyTorch", matched: false },
     ],
     match: 65,
-    fit: "Needs Review",
     salary: "80k - 100k",
     savedLabel: "Saved 1 week ago",
   },
 ];
 
-const fitStyles = {
-  "Excellent Fit": "text-emerald-600",
-  "Good Fit": "text-violet-600",
-  "Needs Review": "text-amber-600",
-};
-
-function MatchBar({ percent, fit }) {
+function MatchBar({ percent }) {
   return (
     <div className="flex-1 min-w-[140px]">
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-sm font-semibold text-violet-600">
           {percent}% Match
-        </span>
-        <span
-          className={`text-[11px] font-semibold tracking-wide uppercase ${fitStyles[fit]}`}
-        >
-          {fit}
         </span>
       </div>
       <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
@@ -137,7 +121,10 @@ function MatchBar({ percent, fit }) {
 function SavedJobCard({ job, onRemove }) {
   const Icon = job.icon;
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+    <div
+      onClick={() => (window.location.href = "/jobdescription")}
+      className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 cursor-pointer hover:shadow-md hover:border-violet-200 transition-all group"
+    >
       <div className="flex items-start gap-4">
         <div
           className={`w-12 h-12 rounded-xl ${job.iconBg} flex items-center justify-center shrink-0`}
@@ -148,7 +135,7 @@ function SavedJobCard({ job, onRemove }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h3 className="text-[17px] font-bold text-gray-900">
+              <h3 className="text-[17px] font-bold text-gray-900 group-hover:text-violet-600 transition-colors">
                 {job.title}
               </h3>
               <p className="text-sm text-gray-500 mt-0.5">
@@ -157,9 +144,12 @@ function SavedJobCard({ job, onRemove }) {
             </div>
             <div className="flex flex-col items-end gap-1.5 shrink-0">
               <button
-                onClick={() => onRemove(job.id)}
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevents navigating to /jobdescription
+                  onRemove(job.id);
+                }}
                 aria-label="Remove from saved jobs"
-                className="text-violet-500 hover:text-violet-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 rounded"
+                className="text-violet-500 hover:text-violet-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 rounded relative z-10"
               >
                 <Bookmark
                   className="w-5 h-5"
@@ -177,11 +167,10 @@ function SavedJobCard({ job, onRemove }) {
             {job.skills.map((s) => (
               <span
                 key={s.name}
-                className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${
-                  s.matched
-                    ? "bg-emerald-50 text-emerald-700"
-                    : "bg-gray-100 text-gray-600"
-                }`}
+                className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${s.matched
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-gray-100 text-gray-600"
+                  }`}
               >
                 {s.matched && <Check className="w-3 h-3" strokeWidth={2.5} />}
                 {s.name}
@@ -190,12 +179,15 @@ function SavedJobCard({ job, onRemove }) {
           </div>
 
           <div className="flex items-center gap-6 mt-5">
-            <MatchBar percent={job.match} fit={job.fit} />
+            <MatchBar percent={job.match} />
             <div className="flex items-center gap-4 shrink-0">
               <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">
                 {job.salary}
               </span>
-              <button className="bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 whitespace-nowrap">
+              <button
+                onClick={(e) => e.stopPropagation()} // Prevents navigating to /jobdescription
+                className="bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 whitespace-nowrap relative z-10"
+              >
                 Apply Now
               </button>
             </div>

@@ -176,9 +176,11 @@ const JobCard = ({ job }) => {
   const [bookmarked, setBookmarked] = useState(job.bookmarked);
 
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col gap-4 hover:shadow-md transition-shadow duration-200">
+    <div
+      onClick={() => window.location.href = '/jobdescription'}
+      className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col gap-4 hover:shadow-md transition-shadow duration-200 cursor-pointer"
+    >
       {/* Header */}
-
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center flex-shrink-0">
@@ -194,8 +196,11 @@ const JobCard = ({ job }) => {
           </div>
         </div>
         <button
-          onClick={() => setBookmarked(!bookmarked)}
-          className="mt-0.5 hover:scale-110 transition-transform"
+          onClick={(e) => {
+            e.stopPropagation(); // Prevents the card click event
+            setBookmarked(!bookmarked);
+          }}
+          className="mt-0.5 hover:scale-110 transition-transform relative z-10"
           aria-label="Bookmark job"
         >
           <BookmarkIcon filled={bookmarked} />
@@ -223,7 +228,10 @@ const JobCard = ({ job }) => {
       {/* Salary + Apply */}
       <div className="flex items-center justify-between mt-1">
         <span className="text-sm text-gray-500">{job.salary}</span>
-        <button className="bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-5 py-2 rounded-full transition-colors duration-200">
+        <button
+          onClick={(e) => e.stopPropagation()} // Prevents the card click event
+          className="bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-5 py-2 rounded-full transition-colors duration-200 relative z-10"
+        >
           Apply Now
         </button>
       </div>
