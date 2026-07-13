@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+__pycache__/
+*.pyc
+*.pyo
+flask_server/__pycache__/
