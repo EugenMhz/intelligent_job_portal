@@ -51,6 +51,7 @@ const Profile = () => {
   const [cvProgress, setCvProgress] = useState(0);
   const [cvDeleting, setCvDeleting] = useState(false);
   const [showDeleteCvConfirm, setShowDeleteCvConfirm] = useState(false);
+  const [newlyExtractedSkills, setNewlyExtractedSkills] = useState([]); // Skills found in latest upload
 
   // Logout confirm
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -186,6 +187,7 @@ const Profile = () => {
     }
     setCvUploading(true);
     setCvProgress(0);
+    setNewlyExtractedSkills([]); // clear previous results
     const interval = setInterval(() => setCvProgress((p) => p < 85 ? p + Math.random() * 15 : p), 200);
 
     try {
@@ -198,10 +200,17 @@ const Profile = () => {
       clearInterval(interval);
       setCvProgress(100);
       setResumeUrl(data.resume_url);
-      // Merge newly extracted skills without duplicates
-      setSkills((prev) => [...new Set([...prev, ...data.skills])]);
+
+      // Track only *newly added* skills (not already in the list)
+      setSkills((prev) => {
+        const existingSet = new Set(prev);
+        const brandNew = (data.skills || []).filter((s) => !existingSet.has(s));
+        setNewlyExtractedSkills(brandNew);
+        return [...new Set([...prev, ...data.skills])];
+      });
+
       await new Promise((r) => setTimeout(r, 400));
-      showToast(`CV uploaded! ${data.skill_count} skills extracted.`);
+      showToast(`CV uploaded! ${data.skill_count} skill${data.skill_count !== 1 ? 's' : ''} extracted.`);
     } catch (err) {
       clearInterval(interval);
       showToast(err.message, true);
@@ -469,6 +478,47 @@ const Profile = () => {
                 {cvUploading ? "Processing..." : "Select file"}
               </span>
             </div>
+
+            {/* ── Extracted Skills Result Panel ── */}
+            {newlyExtractedSkills.length > 0 && !cvUploading && (
+              <div className="mt-4 bg-gradient-to-br from-violet-50 to-indigo-50 border border-violet-200 rounded-xl p-4">
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-violet-600 flex items-center justify-center shrink-0">
+                      <Sparkles size={14} className="text-white" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-violet-900">
+                        {newlyExtractedSkills.length} new skill{newlyExtractedSkills.length !== 1 ? "s" : ""} extracted!
+                      </p>
+                      <p className="text-[11px] text-violet-500">Added to your skills list below</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setNewlyExtractedSkills([])}
+                    className="text-violet-300 hover:text-violet-600 transition-colors cursor-pointer mt-0.5 shrink-0"
+                    aria-label="Dismiss"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {newlyExtractedSkills.map((skill, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-violet-700 bg-white border border-violet-200 px-2.5 py-1 rounded-full shadow-sm"
+                    >
+                      <CheckCircle size={10} className="text-emerald-500 shrink-0" />
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {newlyExtractedSkills.length === 0 && !cvUploading && resumeUrl && (
+              <></>
+            )}
 
             {/* Current resume file display */}
             {resumeUrl && (
