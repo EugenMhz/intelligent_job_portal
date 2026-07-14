@@ -27,7 +27,7 @@ function ChangePassword() {
     if (error) setError('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (formData.newPassword !== formData.confirmNewPassword) {
@@ -41,17 +41,45 @@ function ChangePassword() {
     }
 
     setIsSaving(true);
+    setError('');
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const userStr = localStorage.getItem('user');
+      if (!userStr) {
+        throw new Error('User session not found. Please log in again.');
+      }
+      const user = JSON.parse(userStr);
+      const userId = user.id;
+
+      const res = await fetch('http://localhost:5000/api/auth/change-password', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: userId,
+          oldPassword: formData.oldPassword,
+          newPassword: formData.newPassword,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update password');
+      }
+
       setIsSaving(false);
       setShowToast(true);
-      
+
       // Redirect back to profile after 1.5s
       setTimeout(() => {
         navigate('/profile');
       }, 1500);
-    }, 1000);
+    } catch (err) {
+      setError(err.message);
+      setIsSaving(false);
+    }
   };
 
   return (
