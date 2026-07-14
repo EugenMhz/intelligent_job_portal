@@ -40,7 +40,7 @@ const JobDescription = () => {
         setLoading(true);
         const [seekerRes, jobRes, bookmarksRes, applicationsRes] = await Promise.all([
           fetch(`${API}/api/jobseekers/${userId}`),
-          fetch(`${API}/api/jobs/${jobId}`),
+          fetch(`${API}/api/jobs/${jobId}?seekerId=${userId}`),
           fetch(`${API}/api/bookmarks/${userId}`),
           fetch(`${API}/api/applications?seeker_id=${userId}`)
         ]);
@@ -65,15 +65,8 @@ const JobDescription = () => {
 
         // Calculate matching details
         const seekerSkills = (seekerData.skills || []).map(s => s.toLowerCase());
-        const jobSkills = (jobData.skills || []).map(s => s.toLowerCase());
 
-        let matchPercent = 0;
-        if (jobSkills.length > 0) {
-          const matches = jobSkills.filter(skill => seekerSkills.includes(skill));
-          matchPercent = Math.round((matches.length / jobSkills.length) * 100);
-        } else {
-          matchPercent = 75; // Default match
-        }
+        const matchPercent = jobData.match_score !== undefined ? jobData.match_score : 75;
 
         const skillsList = (jobData.skills || []).map(skillName => ({
           name: skillName,

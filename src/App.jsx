@@ -13,6 +13,7 @@ import ChangePassword from "./pages/jobseeker/ChangePassword";
 import RecruiterShell from "./pages/recruiter/RecruiterShell";
 import ForgotPassword from "./auth/ForgotPassword";
 import ResetPassword from "./auth/ResetPassword";
+import ProtectedRoute from "./auth/ProtectedRoute";
 
 const appRouter = createBrowserRouter([
   {
@@ -25,35 +26,67 @@ const appRouter = createBrowserRouter([
   },
   {
     path: "/cv-upload",
-    element: <CVUpload />,
+    element: (
+      <ProtectedRoute allowedRoles={["seeker"]}>
+        <CVUpload />
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/jobseeker",
-    element: <JobSeekerDashboard />,
+    element: (
+      <ProtectedRoute allowedRoles={["seeker"]}>
+        <JobSeekerDashboard />
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/job",
-    element: <Job />,
+    element: (
+      <ProtectedRoute allowedRoles={["seeker"]}>
+        <Job />
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/application",
-    element: <Application />,
+    element: (
+      <ProtectedRoute allowedRoles={["seeker"]}>
+        <Application />
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/bookmark",
-    element: <Bookmark />,
+    element: (
+      <ProtectedRoute allowedRoles={["seeker"]}>
+        <Bookmark />
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/jobdescription",
-    element: <JobDescription />,
+    element: (
+      <ProtectedRoute allowedRoles={["seeker"]}>
+        <JobDescription />
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/profile",
-    element: <Profile />,
+    element: (
+      <ProtectedRoute allowedRoles={["seeker"]}>
+        <Profile />
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/changepassword",
-    element: <ChangePassword />,
+    element: (
+      <ProtectedRoute allowedRoles={["seeker", "recruiter"]}>
+        <ChangePassword />
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/forgot-password",
@@ -65,7 +98,11 @@ const appRouter = createBrowserRouter([
   },
   {
     path: "/recruiter/*",
-    element: <RecruiterShell />,
+    element: (
+      <ProtectedRoute allowedRoles={["recruiter"]}>
+        <RecruiterShell />
+      </ProtectedRoute>
+    ),
   },
 ]);
 

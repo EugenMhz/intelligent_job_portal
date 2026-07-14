@@ -157,7 +157,7 @@ const JobBoard = () => {
       setLoading(true);
       const [seekerRes, jobsRes, bookmarksRes, applicationsRes] = await Promise.all([
         fetch(`${API}/api/jobseekers/${userId}`),
-        fetch(`${API}/api/jobs`),
+        fetch(`${API}/api/jobs?seekerId=${userId}`),
         fetch(`${API}/api/bookmarks/${userId}`),
         fetch(`${API}/api/applications?seeker_id=${userId}`)
       ]);
@@ -183,15 +183,7 @@ const JobBoard = () => {
 
       // Process and enrich jobs
       const enriched = jobsData.map(job => {
-        const jobSkills = (job.skills || []).map(s => s.toLowerCase());
-        
-        let matchPercent = 0;
-        if (jobSkills.length > 0) {
-          const matches = jobSkills.filter(skill => seekerSkills.includes(skill));
-          matchPercent = Math.round((matches.length / jobSkills.length) * 100);
-        } else {
-          matchPercent = 75; // Default match
-        }
+        const matchPercent = job.match_score !== undefined ? job.match_score : 75;
 
         const skillsList = (job.skills || []).map(skillName => ({
           name: skillName,

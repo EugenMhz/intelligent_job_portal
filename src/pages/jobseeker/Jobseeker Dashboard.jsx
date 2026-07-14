@@ -262,7 +262,7 @@ export default function JobSeekerDashboard() {
         setLoading(true);
         const [seekerRes, jobsRes, bookmarksRes, applicationsRes] = await Promise.all([
           fetch(`${API}/api/jobseekers/${userId}`),
-          fetch(`${API}/api/jobs`),
+          fetch(`${API}/api/jobs?seekerId=${userId}`),
           fetch(`${API}/api/bookmarks/${userId}`),
           fetch(`${API}/api/applications?seeker_id=${userId}`)
         ]);
@@ -282,20 +282,9 @@ export default function JobSeekerDashboard() {
         }
         setAppliedJobIds(appliedIds);
 
-        const seekerSkills = (seekerData.skills || []).map(s => s.toLowerCase());
-
-        // Process jobs and calculate matches
+        // Process jobs and use backend-calculated semantic match score
         const enrichedJobs = jobsData.map(job => {
-          const jobSkills = (job.skills || []).map(s => s.toLowerCase());
-          
-          let matchPercent = 0;
-          if (jobSkills.length > 0) {
-            const matches = jobSkills.filter(skill => seekerSkills.includes(skill));
-            matchPercent = Math.round((matches.length / jobSkills.length) * 100);
-          } else {
-            // Default match if job has no required skills listed
-            matchPercent = 75;
-          }
+          const matchPercent = job.match_score !== undefined ? job.match_score : 75;
 
           return {
             ...job,

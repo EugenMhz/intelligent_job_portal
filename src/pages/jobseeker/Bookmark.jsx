@@ -245,15 +245,7 @@ const SavedJobs = () => {
 
         // Process bookmarked jobs
         const enrichedBookmarks = bookmarksData.map(job => {
-          const jobSkills = (job.skills || []).map(s => s.toLowerCase());
-          
-          let matchPercent = 0;
-          if (jobSkills.length > 0) {
-            const matches = jobSkills.filter(skill => seekerSkills.includes(skill));
-            matchPercent = Math.round((matches.length / jobSkills.length) * 100);
-          } else {
-            matchPercent = 75; // Default match
-          }
+          const matchPercent = job.match_score !== undefined ? job.match_score : 75;
 
           // Map list of skills to the matched boolean structure expected by badge
           const skillsList = (job.skills || []).map(skillName => ({

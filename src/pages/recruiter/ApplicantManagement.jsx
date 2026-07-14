@@ -229,8 +229,16 @@ function ApplicantManagement({ selectedJob, jobs, applicants, onUpdateStatus, on
                   className="bg-white border border-slate-200 shadow-sm rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-violet-100 hover:shadow-md transition-all duration-300"
                 >
                   <div className="flex items-start gap-4 flex-1">
-                    <div className="w-12 h-12 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center font-bold text-base shrink-0 uppercase border border-violet-200/50">
-                      {candidate.name.split(' ').map(n => n[0]).join('')}
+                    <div className="w-12 h-12 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center font-bold text-base shrink-0 uppercase border border-violet-200/50 overflow-hidden">
+                      {candidate.profilePictureUrl ? (
+                        <img 
+                          src={`http://localhost:5000${candidate.profilePictureUrl}`} 
+                          alt={candidate.name} 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        candidate.name.split(' ').map(n => n[0]).join('')
+                      )}
                     </div>
                     <div className="space-y-1">
                       <h3
