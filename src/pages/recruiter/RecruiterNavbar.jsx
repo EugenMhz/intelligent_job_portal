@@ -79,14 +79,22 @@ const RecruiterNavbar = ({ user }) => {
 
             {/* avatar */}
             <div className="flex items-center gap-4 shrink-0">
-              <Link
-                to="/recruiter/profile"
-                className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-100 to-violet-200 border border-violet-200 text-violet-700 flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden ring-1 ring-violet-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
-                aria-label="Recruiter Profile"
-                title="View Recruiter Profile"
-              >
-                {userInitials}
-              </Link>
+            <Link
+              to="/recruiter/profile"
+              className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-100 to-violet-200 border border-violet-200 text-violet-700 flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden ring-1 ring-violet-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+              aria-label="Recruiter Profile"
+              title="View Recruiter Profile"
+            >
+              {user?.profile_picture_url ? (
+                <img
+                  src={`http://localhost:5000${user.profile_picture_url}`}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                userInitials
+              )}
+            </Link>
 
               <button
                 type="button"

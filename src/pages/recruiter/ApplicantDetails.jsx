@@ -48,7 +48,7 @@ function ApplicantDetails({ applicant, onUpdateStatus, onNavigate }) {
       <div className="flex flex-col gap-3 border-b border-slate-100 pb-5">
         <button 
           className="flex items-center gap-2 text-xs text-slate-400 hover:text-slate-600 font-semibold uppercase tracking-wider cursor-pointer border-none bg-none outline-none text-left w-fit"
-          onClick={() => onNavigate('applicants')}
+          onClick={() => window.history.back()}
         >
           <ArrowLeft size={14} />
           Back to Applicant Review
@@ -57,7 +57,12 @@ function ApplicantDetails({ applicant, onUpdateStatus, onNavigate }) {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mt-1">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">{applicant.name}</h1>
-            <p className="text-slate-500 text-sm mt-1">{applicant.role} at <strong className="text-slate-700 font-semibold">{applicant.company}</strong></p>
+            <p className="text-slate-500 text-sm mt-1">
+              {applicant.role} at <strong className="text-slate-700 font-semibold">{applicant.company}</strong>
+              {applicant.jobTitle && (
+                <> • Applied for <strong className="text-violet-600 font-semibold">{applicant.jobTitle}</strong></>
+              )}
+            </p>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -79,8 +84,16 @@ function ApplicantDetails({ applicant, onUpdateStatus, onNavigate }) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column - Sidebar Info */}
         <div className="lg:col-span-1 bg-white border border-slate-200 shadow-sm rounded-2xl p-6 flex flex-col items-center text-center self-start">
-          <div className="w-20 h-20 rounded-full bg-violet-50 border border-violet-100 text-violet-700 flex items-center justify-center font-bold text-3xl uppercase mb-4 ring-4 ring-violet-50/50">
-            {applicant.name.split(' ').map(n => n[0]).join('')}
+          <div className="w-20 h-20 rounded-full bg-violet-50 border border-violet-100 text-violet-700 flex items-center justify-center font-bold text-3xl uppercase mb-4 ring-4 ring-violet-50/50 overflow-hidden shrink-0">
+            {applicant.profilePictureUrl ? (
+              <img 
+                src={`http://localhost:5000${applicant.profilePictureUrl}`} 
+                alt={applicant.name} 
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              applicant.name.split(' ').map(n => n[0]).join('')
+            )}
           </div>
           <h2 className="text-lg font-bold text-slate-900">{applicant.name}</h2>
           <p className="text-xs text-slate-400 font-semibold mt-1">Experience: {applicant.experienceLevel}</p>
@@ -96,14 +109,20 @@ function ApplicantDetails({ applicant, onUpdateStatus, onNavigate }) {
               <span className="font-semibold text-slate-700 break-all text-right max-w-[170px]" style={{ fontSize: '13px' }}>{candidateDetails.email}</span>
             </div>
             <div className="flex justify-between items-center text-sm">
-              <span className="text-slate-400 font-medium flex items-center gap-1.5"><Phone size={14} /> Phone</span>
-              <span className="font-semibold text-slate-700 text-right" style={{ fontSize: '13px' }}>{candidateDetails.phone}</span>
-            </div>
-            <div className="flex justify-between items-center text-sm">
               <span className="text-slate-400 font-medium flex items-center gap-1.5"><Calendar size={14} /> Level</span>
               <span className="font-semibold text-slate-700 text-right" style={{ fontSize: '13px' }}>{applicant.experienceLevel}</span>
             </div>
           </div>
+          {applicant.resumeUrl && (
+            <a 
+              href={`http://localhost:5000${applicant.resumeUrl}`} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="w-full mt-5 bg-violet-600 hover:bg-violet-700 text-white font-semibold rounded-xl py-2.5 flex items-center justify-center gap-2 transition-all shadow-sm text-xs cursor-pointer text-center"
+            >
+              View CV / Resume
+            </a>
+          )}
         </div>
 
         {/* Right Column - Tabs and Details Content */}

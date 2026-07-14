@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Bookmark,
   ChevronDown,
@@ -11,94 +11,6 @@ import {
   BookmarkX,
 } from "lucide-react";
 import Navbar from "./Navbar";
-
-const INITIAL_SAVED = [
-  {
-    id: 1,
-    title: "Senior Frontend Engineer",
-    company: "GlobalTech Solutions",
-    location: "Remote",
-    icon: Code2,
-    iconBg: "bg-violet-100",
-    iconColor: "text-violet-600",
-    skills: [
-      { name: "React", matched: true },
-      { name: "TypeScript", matched: true },
-      { name: "Tailwind CSS", matched: false },
-    ],
-    match: 98,
-    salary: "40k - 60k",
-    savedLabel: "Saved 2 days ago",
-  },
-  {
-    id: 2,
-    title: "Product Designer",
-    company: "CloudNine Inc",
-    location: "Kalimati, Kathmandu",
-    icon: Palette,
-    iconBg: "bg-sky-100",
-    iconColor: "text-sky-600",
-    skills: [
-      { name: "Figma", matched: true },
-      { name: "Prototyping", matched: false },
-      { name: "UI/UX", matched: false },
-    ],
-    match: 82,
-    salary: "20k - 45k",
-    savedLabel: "Saved 4 days ago",
-  },
-  {
-    id: 3,
-    title: "Cloud Architect",
-    company: "SkyNet Systems",
-    location: "On-site",
-    icon: Cloud,
-    iconBg: "bg-orange-100",
-    iconColor: "text-orange-500",
-    skills: [
-      { name: "AWS", matched: true },
-      { name: "Terraform", matched: true },
-      { name: "Kubernetes", matched: false },
-    ],
-    match: 74,
-    salary: "50k - 70k",
-    savedLabel: "Saved 6 days ago",
-  },
-  {
-    id: 4,
-    title: "Backend Lead",
-    company: "ScaleUp",
-    location: "Remote",
-    icon: Terminal,
-    iconBg: "bg-indigo-100",
-    iconColor: "text-indigo-600",
-    skills: [
-      { name: "Node.js", matched: true },
-      { name: "PostgreSQL", matched: false },
-      { name: "Docker", matched: false },
-    ],
-    match: 88,
-    salary: "60k - 90k",
-    savedLabel: "Saved 1 week ago",
-  },
-  {
-    id: 5,
-    title: "Data Scientist",
-    company: "Insight Analytics",
-    location: "Naxal, Kathmandu",
-    icon: Database,
-    iconBg: "bg-violet-100",
-    iconColor: "text-violet-600",
-    skills: [
-      { name: "Python", matched: true },
-      { name: "SQL", matched: true },
-      { name: "PyTorch", matched: false },
-    ],
-    match: 65,
-    salary: "80k - 100k",
-    savedLabel: "Saved 1 week ago",
-  },
-];
 
 function MatchBar({ percent }) {
   return (
@@ -118,18 +30,51 @@ function MatchBar({ percent }) {
   );
 }
 
-function SavedJobCard({ job, onRemove }) {
-  const Icon = job.icon;
+const getJobIconDetails = (department) => {
+  const dept = (department || "").toLowerCase();
+  if (dept.includes("engineering") || dept.includes("backend") || dept.includes("infrastructure") || dept.includes("devops")) {
+    return { icon: Code2, bg: "bg-violet-100", color: "text-violet-600" };
+  }
+  if (dept.includes("design") || dept.includes("ux") || dept.includes("ui")) {
+    return { icon: Palette, bg: "bg-sky-100", color: "text-sky-600" };
+  }
+  if (dept.includes("cloud") || dept.includes("aws")) {
+    return { icon: Cloud, bg: "bg-orange-100", color: "text-orange-500" };
+  }
+  if (dept.includes("data") || dept.includes("analytics")) {
+    return { icon: Database, bg: "bg-violet-100", color: "text-violet-600" };
+  }
+  return { icon: Terminal, bg: "bg-indigo-100", color: "text-indigo-600" };
+};
+
+const formatSavedLabel = (savedAt) => {
+  if (!savedAt) return "Saved recently";
+  const date = new Date(savedAt);
+  const diffTime = Math.abs(new Date() - date);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays <= 1) {
+    return "Saved today";
+  }
+  if (diffDays === 2) {
+    return "Saved yesterday";
+  }
+  return `Saved ${diffDays} days ago`;
+};
+
+function SavedJobCard({ job, onRemove, applied, onApply }) {
+  const { icon: Icon, bg: iconBg, color: iconColor } = getJobIconDetails(job.department);
+  
   return (
     <div
-      onClick={() => (window.location.href = "/jobdescription")}
+      onClick={() => (window.location.href = `/jobdescription?id=${job.id}`)}
       className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 cursor-pointer hover:shadow-md hover:border-violet-200 transition-all group"
     >
       <div className="flex items-start gap-4">
         <div
-          className={`w-12 h-12 rounded-xl ${job.iconBg} flex items-center justify-center shrink-0`}
+          className={`w-12 h-12 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}
         >
-          <Icon className={`w-6 h-6 ${job.iconColor}`} strokeWidth={2} />
+          <Icon className={`w-6 h-6 ${iconColor}`} strokeWidth={2} />
         </div>
 
         <div className="flex-1 min-w-0">
@@ -157,14 +102,14 @@ function SavedJobCard({ job, onRemove }) {
                   strokeWidth={1.75}
                 />
               </button>
-              <span className="text-[11px] text-gray-400 whitespace-nowrap">
-                {job.savedLabel}
+              <span className="text-[11px] text-gray-400 whitespace-nowrap font-sans">
+                {formatSavedLabel(job.saved_at)}
               </span>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-2 mt-3">
-            {job.skills.map((s) => (
+            {(job.skills || []).map((s) => (
               <span
                 key={s.name}
                 className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${s.matched
@@ -181,14 +126,21 @@ function SavedJobCard({ job, onRemove }) {
           <div className="flex items-center gap-6 mt-5">
             <MatchBar percent={job.match} />
             <div className="flex items-center gap-4 shrink-0">
-              <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">
-                {job.salary}
-              </span>
               <button
-                onClick={(e) => e.stopPropagation()} // Prevents navigating to /jobdescription
-                className="bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 whitespace-nowrap relative z-10"
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevents navigating to /jobdescription
+                  if (!applied && onApply) {
+                    onApply(job.id);
+                  }
+                }}
+                disabled={applied}
+                className={`text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors focus:outline-none whitespace-nowrap relative z-10 cursor-pointer ${
+                  applied 
+                    ? "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-100" 
+                    : "bg-violet-600 hover:bg-violet-700 text-white"
+                }`}
               >
-                Apply Now
+                {applied ? "Applied" : "Apply Now"}
               </button>
             </div>
           </div>
@@ -219,10 +171,137 @@ function EmptyState() {
 }
 
 const SavedJobs = () => {
-  const [jobs, setJobs] = useState(INITIAL_SAVED);
-  const [sort, setSort] = useState("Recently Saved");
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const userId = user?.id;
+  const API = "http://localhost:5000";
 
-  const removeJob = (id) => setJobs((prev) => prev.filter((j) => j.id !== id));
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [sort, setSort] = useState("Recently Saved");
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [appliedJobIds, setAppliedJobIds] = useState(new Set());
+
+  const removeJob = async (id) => {
+    try {
+      const res = await fetch(`${API}/api/bookmarks`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, jobId: id }),
+      });
+      if (res.ok) {
+        setJobs((prev) => prev.filter((j) => j.id !== id));
+      }
+    } catch (err) {
+      console.error("Failed to delete bookmark:", err);
+    }
+  };
+
+  const handleSort = (type) => {
+    setShowSortDropdown(false);
+    if (type === "recently-saved") {
+      setSort("Recently Saved");
+      setJobs(prevJobs => [...prevJobs].sort((a, b) => new Date(b.saved_at) - new Date(a.saved_at)));
+    } else if (type === "recently-posted") {
+      setSort("Recently Posted");
+      setJobs(prevJobs => [...prevJobs].sort((a, b) => new Date(b.posted_date || 0) - new Date(a.posted_date || 0)));
+    } else if (type === "name-az") {
+      setSort("Name A-Z");
+      setJobs(prevJobs => [...prevJobs].sort((a, b) => a.title.localeCompare(b.title)));
+    } else if (type === "name-za") {
+      setSort("Name Z-A");
+      setJobs(prevJobs => [...prevJobs].sort((a, b) => b.title.localeCompare(a.title)));
+    }
+  };
+
+  useEffect(() => {
+    const fetchSavedJobs = async () => {
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
+      try {
+        setLoading(true);
+        const [seekerRes, bookmarksRes, applicationsRes] = await Promise.all([
+          fetch(`${API}/api/jobseekers/${userId}`),
+          fetch(`${API}/api/bookmarks/details/${userId}`),
+          fetch(`${API}/api/applications?seeker_id=${userId}`)
+        ]);
+
+        if (!seekerRes.ok || !bookmarksRes.ok) {
+          throw new Error("Failed to fetch bookmarks data");
+        }
+
+        const seekerData = await seekerRes.json();
+        const bookmarksData = await bookmarksRes.json();
+        
+        let appliedIds = new Set();
+        if (applicationsRes.ok) {
+          const appsData = await applicationsRes.json();
+          appliedIds = new Set((appsData || []).map(app => app.job_id));
+        }
+        setAppliedJobIds(appliedIds);
+
+        const seekerSkills = (seekerData.skills || []).map(s => s.toLowerCase());
+
+        // Process bookmarked jobs
+        const enrichedBookmarks = bookmarksData.map(job => {
+          const jobSkills = (job.skills || []).map(s => s.toLowerCase());
+          
+          let matchPercent = 0;
+          if (jobSkills.length > 0) {
+            const matches = jobSkills.filter(skill => seekerSkills.includes(skill));
+            matchPercent = Math.round((matches.length / jobSkills.length) * 100);
+          } else {
+            matchPercent = 75; // Default match
+          }
+
+          // Map list of skills to the matched boolean structure expected by badge
+          const skillsList = (job.skills || []).map(skillName => ({
+            name: skillName,
+            matched: seekerSkills.includes(skillName.toLowerCase())
+          }));
+
+          return {
+            ...job,
+            match: matchPercent,
+            skills: skillsList,
+            company: job.department || "Creative Flow",
+            location: job.location || "Remote"
+          };
+        });
+
+        // Apply default sort (Recently Saved)
+        enrichedBookmarks.sort((a, b) => new Date(b.saved_at) - new Date(a.saved_at));
+
+        setJobs(enrichedBookmarks);
+      } catch (err) {
+        console.error("Failed to fetch saved jobs:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSavedJobs();
+  }, [userId]);
+
+  const handleApply = async (id) => {
+    try {
+      const res = await fetch(`${API}/api/applications`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ seeker_id: userId, job_id: id }),
+      });
+      if (res.ok) {
+        setAppliedJobIds(prev => {
+          const next = new Set(prev);
+          next.add(id);
+          return next;
+        });
+      }
+    } catch (err) {
+      console.error("Apply job error:", err);
+    }
+  };
 
   return (
     <div>
@@ -242,20 +321,68 @@ const SavedJobs = () => {
               </p>
             </div>
             {jobs.length > 0 && (
-              <button className="flex items-center gap-1.5 text-sm">
-                <span className="text-gray-500">Sort by:</span>
-                <span className="font-semibold text-violet-600">{sort}</span>
-                <ChevronDown className="w-4 h-4 text-gray-400" />
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setShowSortDropdown(!showSortDropdown)}
+                  className="flex items-center gap-1.5 text-sm cursor-pointer"
+                >
+                  <span className="text-gray-500">Sort by:</span>
+                  <span className="font-semibold text-violet-600">{sort}</span>
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                </button>
+
+                {showSortDropdown && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setShowSortDropdown(false)} />
+                    <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-xl shadow-lg py-1.5 z-20 text-left">
+                      <button
+                        onClick={() => handleSort("recently-saved")}
+                        className={`w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-50 transition-colors cursor-pointer ${sort === "Recently Saved" ? "text-violet-600 bg-violet-50/50" : "text-gray-700"}`}
+                      >
+                        Recently Saved
+                      </button>
+                      <button
+                        onClick={() => handleSort("recently-posted")}
+                        className={`w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-50 transition-colors cursor-pointer ${sort === "Recently Posted" ? "text-violet-600 bg-violet-50/50" : "text-gray-700"}`}
+                      >
+                        Recently Posted
+                      </button>
+                      <button
+                        onClick={() => handleSort("name-az")}
+                        className={`w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-50 transition-colors cursor-pointer ${sort === "Name A-Z" ? "text-violet-600 bg-violet-50/50" : "text-gray-700"}`}
+                      >
+                        Name A-Z
+                      </button>
+                      <button
+                        onClick={() => handleSort("name-za")}
+                        className={`w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-50 transition-colors cursor-pointer ${sort === "Name Z-A" ? "text-violet-600 bg-violet-50/50" : "text-gray-700"}`}
+                      >
+                        Name Z-A
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             )}
           </header>
 
-          {jobs.length === 0 ? (
+          {loading ? (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-20 flex flex-col items-center justify-center text-slate-400 gap-3">
+              <div className="w-8 h-8 rounded-full border-4 border-violet-100 border-t-violet-600 animate-spin" />
+              <p className="text-sm font-semibold">Loading bookmarked jobs...</p>
+            </div>
+          ) : jobs.length === 0 ? (
             <EmptyState />
           ) : (
             <div className="space-y-5">
               {jobs.map((job) => (
-                <SavedJobCard key={job.id} job={job} onRemove={removeJob} />
+                <SavedJobCard 
+                  key={job.id} 
+                  job={job} 
+                  onRemove={removeJob} 
+                  applied={appliedJobIds.has(job.id)}
+                  onApply={handleApply}
+                />
               ))}
             </div>
           )}

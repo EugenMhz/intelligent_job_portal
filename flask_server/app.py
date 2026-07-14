@@ -148,24 +148,28 @@ def login():
         user_id = user['id']
         role = user['role']
 
-        # Fetch the user's name from profile
+        # Fetch the user's name and profile picture from profile
         full_name = ""
+        profile_picture_url = None
         if role == 'seeker':
-            cur.execute("SELECT full_name FROM jobseeker_profiles WHERE user_id = %s", (user_id,))
+            cur.execute("SELECT full_name, profile_picture_url FROM jobseeker_profiles WHERE user_id = %s", (user_id,))
             prof = cur.fetchone()
             if prof:
                 full_name = prof['full_name']
+                profile_picture_url = prof.get('profile_picture_url')
         elif role == 'recruiter':
-            cur.execute("SELECT full_name FROM recruiter_profiles WHERE user_id = %s", (user_id,))
+            cur.execute("SELECT full_name, profile_picture_url FROM recruiter_profiles WHERE user_id = %s", (user_id,))
             prof = cur.fetchone()
             if prof:
                 full_name = prof['full_name']
+                profile_picture_url = prof.get('profile_picture_url')
 
         return jsonify({
             "id": user_id,
             "email": user['email'],
             "role": role,
-            "name": full_name
+            "name": full_name,
+            "profile_picture_url": profile_picture_url
         }), 200
 
     except Exception as e:
@@ -213,6 +217,149 @@ def change_password():
         conn.close()
 
 
+def send_reset_email(to_email, reset_link):
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
+    mail_server = os.getenv("MAIL_SERVER", "smtp.gmail.com")
+    mail_port = os.getenv("MAIL_PORT", "587")
+    mail_username = os.getenv("MAIL_USERNAME")
+    mail_password = os.getenv("MAIL_PASSWORD")
+
+    # If SMTP username/password are placeholders or empty, do not attempt to send
+    if (not mail_username or not mail_password or 
+        mail_username == "your-email@gmail.com" or 
+        mail_password == "your-16-character-app-password"):
+        app.logger.warning("SMTP Mail credentials are using placeholders or not configured. Email NOT sent.")
+        return False
+
+    msg = MIMEMultipart()
+    msg['From'] = mail_username
+    msg['To'] = to_email
+    msg['Subject'] = "Reset Your Password - Intelligent Job Portal"
+
+    body = f"""Hello,
+
+We received a request to reset your password for your Intelligent Job Portal account. 
+Please click the link below to choose a new password:
+
+{reset_link}
+
+Note: This link will expire in 15 minutes.
+
+If you did not request this, you can safely ignore this email.
+
+Best regards,
+Intelligent Job Portal Team
+"""
+    msg.attach(MIMEText(body, 'plain'))
+
+    try:
+        server = smtplib.SMTP(mail_server, int(mail_port))
+        server.starttls()  # Upgrade connection to secure SSL/TLS
+        server.login(mail_username, mail_password)
+        server.sendmail(mail_username, to_email, msg.as_string())
+        server.quit()
+        app.logger.info(f"Password reset email successfully sent to {to_email}.")
+        return True
+    except Exception as e:
+        app.logger.error(f"Failed to send email to {to_email}: {str(e)}")
+        return False
+
+
+@app.route('/api/auth/forgot-password', methods=['POST'])
+def forgot_password():
+    import secrets
+    data = request.get_json() or {}
+    email = data.get('email')
+
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+
+    email = email.strip().lower()
+
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("SELECT id FROM users WHERE LOWER(email) = %s", (email,))
+        user = cur.fetchone()
+
+        if not user:
+            return jsonify({"message": "If the email is registered, a password reset link will be sent."}), 200
+
+        token = secrets.token_urlsafe(32)
+        expiry = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=15)
+
+        cur.execute(
+            "UPDATE users SET reset_token = %s, reset_token_expiry = %s WHERE id = %s",
+            (token, expiry, user['id'])
+        )
+        conn.commit()
+
+        reset_link = f"http://localhost:5173/reset-password?token={token}"
+        email_sent = send_reset_email(email, reset_link)
+
+        # Log it to console for easy local access
+        app.logger.info(f"\n========================================\nPASSWORD RESET LINK FOR {email}:\n{reset_link}\n========================================\n")
+
+        return jsonify({
+            "message": "If the email is registered, a password reset link will be sent.",
+            "dev_reset_link": reset_link,
+            "email_sent": email_sent
+        }), 200
+
+    except Exception as e:
+        conn.rollback()
+        app.logger.error(f"Error during forgot password: {str(e)}")
+        return jsonify({"error": "Internal server error during password reset request"}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.route('/api/auth/reset-password', methods=['POST'])
+def reset_password():
+    data = request.get_json() or {}
+    token = data.get('token')
+    new_password = data.get('newPassword')
+
+    if not token or not new_password:
+        return jsonify({"error": "Token and newPassword are required"}), 400
+
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        # Check token and expiry
+        cur.execute(
+            "SELECT id FROM users WHERE reset_token = %s AND reset_token_expiry > CURRENT_TIMESTAMP",
+            (token,)
+        )
+        user = cur.fetchone()
+
+        if not user:
+            return jsonify({"error": "Invalid or expired token"}), 400
+
+        # Update password
+        new_password_hash = bcrypt.generate_password_hash(new_password).decode('utf-8')
+        cur.execute(
+            "UPDATE users SET password_hash = %s, reset_token = NULL, reset_token_expiry = NULL WHERE id = %s",
+            (new_password_hash, user['id'])
+        )
+        conn.commit()
+
+        return jsonify({"message": "Password has been reset successfully"}), 200
+
+    except Exception as e:
+        conn.rollback()
+        app.logger.error(f"Error during reset password: {str(e)}")
+        return jsonify({"error": "Internal server error during password reset"}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
+
 # ==============================================================================
 # JOBS API ROUTES
 # ==============================================================================
@@ -226,7 +373,13 @@ def get_jobs():
         if recruiter_id:
             cur.execute("""
                 SELECT j.*, 
-                       COALESCE(COUNT(a.id), 0)::integer AS "applicantsCount"
+                       COALESCE(COUNT(a.id), 0)::integer AS "applicantsCount",
+                       ARRAY(
+                         SELECT s.name 
+                         FROM job_skills js
+                         JOIN skills s ON js.skill_id = s.id
+                         WHERE js.job_id = j.id
+                       ) AS skills
                 FROM jobs j
                 LEFT JOIN applications a ON j.id = a.job_id
                 WHERE j.recruiter_id = %s
@@ -236,9 +389,16 @@ def get_jobs():
         else:
             cur.execute("""
                 SELECT j.*, 
-                       COALESCE(COUNT(a.id), 0)::integer AS "applicantsCount"
+                       COALESCE(COUNT(a.id), 0)::integer AS "applicantsCount",
+                       ARRAY(
+                         SELECT s.name 
+                         FROM job_skills js
+                         JOIN skills s ON js.skill_id = s.id
+                         WHERE js.job_id = j.id
+                       ) AS skills
                 FROM jobs j
                 LEFT JOIN applications a ON j.id = a.job_id
+                WHERE j.status = 'Active'
                 GROUP BY j.id
                 ORDER BY j.posted_date DESC
             """)
@@ -249,6 +409,45 @@ def get_jobs():
         return jsonify({"error": "Database query failed"}), 500
     finally:
         cur.close()
+        conn.close()
+
+
+@app.route('/api/jobs/<int:job_id>', methods=['GET'])
+def get_job_by_id(job_id):
+    """Get details of a single job opportunity by ID."""
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT j.*, 
+                   rp.full_name AS recruiter_name,
+                   rp.title AS recruiter_title,
+                   rp.profile_picture_url AS recruiter_profile_picture_url,
+                   rp.location AS recruiter_location,
+                   rp.bio AS recruiter_bio,
+                   u.email AS recruiter_email,
+                   ARRAY(
+                     SELECT s.name 
+                     FROM job_skills js
+                     JOIN skills s ON js.skill_id = s.id
+                     WHERE js.job_id = j.id
+                   ) AS skills
+            FROM jobs j
+            LEFT JOIN recruiter_profiles rp ON j.recruiter_id = rp.user_id
+            LEFT JOIN users u ON j.recruiter_id = u.id
+            WHERE j.id = %s
+        """, (job_id,))
+        job = cur.fetchone()
+        cur.close()
+        
+        if not job:
+            return jsonify({"error": "Job opportunity not found"}), 404
+            
+        return jsonify(job), 200
+    except Exception as e:
+        app.logger.error(f"Error fetching job by ID: {str(e)}")
+        return jsonify({"error": "Failed to fetch job details"}), 500
+    finally:
         conn.close()
 
 
@@ -367,7 +566,9 @@ def get_applicants():
                 a.method,
                 jp.education,
                 a.job_id AS "jobId",
+                j.title AS "jobTitle",
                 jp.resume_url AS "resumeUrl",
+                jp.profile_picture_url AS "profilePictureUrl",
                 ARRAY(
                   SELECT s.name 
                   FROM jobseeker_skills jsk
@@ -793,8 +994,26 @@ def upload_cv():
 # Serve uploaded CV files
 @app.route('/uploads/<path:filename>', methods=['GET'])
 def serve_upload(filename):
-    """Serve a file from the uploads directory."""
-    return send_from_directory(UPLOAD_FOLDER, filename)
+    """Serve a file from the uploads directory with correct mimetype and inline disposition."""
+    ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+    mimetype = None
+    if ext == 'pdf':
+        mimetype = 'application/pdf'
+    elif ext == 'docx':
+        mimetype = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    elif ext == 'doc':
+        mimetype = 'application/msword'
+    elif ext in ['png', 'jpg', 'jpeg', 'webp']:
+        mimetype = f'image/{ext if ext != "jpg" else "jpeg"}'
+        
+    try:
+        response = send_from_directory(UPLOAD_FOLDER, filename, mimetype=mimetype)
+        if ext in ['pdf', 'png', 'jpg', 'jpeg', 'webp']:
+            response.headers['Content-Disposition'] = 'inline'
+        return response
+    except Exception as e:
+        app.logger.error(f"Error serving upload {filename}: {str(e)}")
+        return jsonify({"error": "File not found"}), 404
 
 
 @app.route('/api/cv/delete/<int:user_id>', methods=['DELETE'])
@@ -834,6 +1053,378 @@ def delete_cv(user_id):
             conn.rollback()
         app.logger.error(f"CV delete error: {str(e)}")
         return jsonify({"error": "Failed to delete CV"}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+# ==============================================================================
+# PROFILE PICTURE API ROUTES
+# ==============================================================================
+
+ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+def allowed_image(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
+
+@app.route('/api/profile-picture/upload', methods=['POST'])
+def upload_profile_picture():
+    """Upload profile picture, store in uploads directory, update DB URL."""
+    if 'file' not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    file = request.files['file']
+    user_id = request.form.get('userId')
+    role = request.form.get('role')  # 'seeker' or 'recruiter'
+
+    if not user_id or not role:
+        return jsonify({"error": "userId and role are required"}), 400
+    if file.filename == '':
+        return jsonify({"error": "No file selected"}), 400
+    if not allowed_image(file.filename):
+        return jsonify({"error": "Only image files (png, jpg, jpeg, gif, webp) are allowed"}), 400
+
+    # Check file size (max 5MB)
+    file.seek(0, 2)
+    size = file.tell()
+    file.seek(0)
+    if size > MAX_FILE_SIZE:
+        return jsonify({"error": "File exceeds 5MB limit"}), 400
+
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    filename = secure_filename(f"profile_pic_{user_id}_{file.filename}")
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    file.save(filepath)
+
+    profile_picture_url = f"/uploads/{filename}"
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+
+        if role == 'seeker':
+            cur.execute(
+                "UPDATE jobseeker_profiles SET profile_picture_url = %s, updated_at = NOW() WHERE user_id = %s",
+                (profile_picture_url, user_id)
+            )
+        elif role == 'recruiter':
+            cur.execute(
+                "UPDATE recruiter_profiles SET profile_picture_url = %s, updated_at = NOW() WHERE user_id = %s",
+                (profile_picture_url, user_id)
+            )
+        else:
+            return jsonify({"error": "Invalid role. Must be 'seeker' or 'recruiter'"}), 400
+
+        conn.commit()
+        cur.close()
+
+        return jsonify({
+            "message": "Profile picture uploaded successfully",
+            "profile_picture_url": profile_picture_url
+        }), 200
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        app.logger.error(f"Profile picture upload DB error: {str(e)}")
+        return jsonify({"error": "Failed to update profile picture in database"}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route('/api/profile-picture/delete', methods=['DELETE'])
+def delete_profile_picture():
+    """Delete profile picture file from disk and clear its database column."""
+    data = request.get_json() or {}
+    user_id = data.get('userId')
+    role = data.get('role')
+
+    if not user_id or not role:
+        return jsonify({"error": "userId and role are required"}), 400
+
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Get current profile picture url
+        if role == 'seeker':
+            cur.execute("SELECT profile_picture_url FROM jobseeker_profiles WHERE user_id = %s", (user_id,))
+        elif role == 'recruiter':
+            cur.execute("SELECT profile_picture_url FROM recruiter_profiles WHERE user_id = %s", (user_id,))
+        else:
+            return jsonify({"error": "Invalid role. Must be 'seeker' or 'recruiter'"}), 400
+
+        row = cur.fetchone()
+        if not row or not row['profile_picture_url']:
+            return jsonify({"error": "No profile picture found for this user"}), 404
+
+        profile_picture_url = row['profile_picture_url']
+        filename = profile_picture_url.lstrip('/uploads/')
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
+
+        # Delete file from disk if it exists
+        if os.path.exists(filepath):
+            try:
+                os.remove(filepath)
+            except Exception as fe:
+                app.logger.warning(f"Failed to remove profile pic file from disk: {fe}")
+
+        # Clear column in DB
+        if role == 'seeker':
+            cur.execute(
+                "UPDATE jobseeker_profiles SET profile_picture_url = NULL, updated_at = NOW() WHERE user_id = %s",
+                (user_id,)
+            )
+        elif role == 'recruiter':
+            cur.execute(
+                "UPDATE recruiter_profiles SET profile_picture_url = NULL, updated_at = NOW() WHERE user_id = %s",
+                (user_id,)
+            )
+
+        conn.commit()
+        cur.close()
+
+        return jsonify({"message": "Profile picture deleted successfully"}), 200
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        app.logger.error(f"Profile picture delete error: {str(e)}")
+        return jsonify({"error": "Failed to delete profile picture"}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+# ==============================================================================
+# BOOKMARKS / SAVED JOBS API ROUTES
+# ==============================================================================
+
+@app.route('/api/bookmarks', methods=['POST'])
+def add_bookmark():
+    """Bookmark a job for a jobseeker."""
+    data = request.get_json() or {}
+    user_id = data.get('userId')
+    job_id = data.get('jobId')
+
+    if not user_id or not job_id:
+        return jsonify({"error": "userId and jobId are required"}), 400
+
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        # Check if already bookmarked
+        cur.execute(
+            "SELECT 1 FROM saved_jobs WHERE jobseeker_id = %s AND job_id = %s",
+            (user_id, job_id)
+        )
+        if cur.fetchone():
+            return jsonify({"message": "Job already bookmarked"}), 200
+
+        cur.execute(
+            "INSERT INTO saved_jobs (jobseeker_id, job_id) VALUES (%s, %s)",
+            (user_id, job_id)
+        )
+        conn.commit()
+        cur.close()
+        return jsonify({"message": "Job bookmarked successfully"}), 201
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        app.logger.error(f"Add bookmark error: {str(e)}")
+        return jsonify({"error": "Failed to bookmark job"}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route('/api/bookmarks', methods=['DELETE'])
+def remove_bookmark():
+    """Remove a bookmarked job for a jobseeker."""
+    data = request.get_json() or {}
+    user_id = data.get('userId')
+    job_id = data.get('jobId')
+
+    if not user_id or not job_id:
+        return jsonify({"error": "userId and jobId are required"}), 400
+
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute(
+            "DELETE FROM saved_jobs WHERE jobseeker_id = %s AND job_id = %s",
+            (user_id, job_id)
+        )
+        conn.commit()
+        cur.close()
+        return jsonify({"message": "Bookmark removed successfully"}), 200
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        app.logger.error(f"Remove bookmark error: {str(e)}")
+        return jsonify({"error": "Failed to remove bookmark"}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route('/api/bookmarks/<int:user_id>', methods=['GET'])
+def get_user_bookmarks(user_id):
+    """Get all bookmarked job IDs for a user."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("""
+            SELECT s_j.job_id 
+            FROM saved_jobs s_j
+            JOIN jobs j ON s_j.job_id = j.id
+            WHERE s_j.jobseeker_id = %s AND j.status = 'Active'
+        """, (user_id,))
+        rows = cur.fetchall()
+        bookmarked_ids = [row['job_id'] for row in rows]
+        cur.close()
+        return jsonify(bookmarked_ids), 200
+    except Exception as e:
+        app.logger.error(f"Get bookmarks error: {str(e)}")
+        return jsonify({"error": "Failed to fetch bookmarks"}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route('/api/bookmarks/details/<int:user_id>', methods=['GET'])
+def get_user_bookmarks_details(user_id):
+    """Get full details of all bookmarked jobs for a jobseeker."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        # Select job details joined with saved_jobs table
+        cur.execute("""
+            SELECT j.*, 
+                   s_j.created_at AS saved_at,
+                   ARRAY(
+                     SELECT s.name 
+                     FROM job_skills js
+                     JOIN skills s ON js.skill_id = s.id
+                     WHERE js.job_id = j.id
+                   ) AS skills
+            FROM saved_jobs s_j
+            JOIN jobs j ON s_j.job_id = j.id
+            WHERE s_j.jobseeker_id = %s AND j.status = 'Active'
+            ORDER BY s_j.created_at DESC
+        """, (user_id,))
+        bookmarks = cur.fetchall()
+        cur.close()
+        return jsonify(bookmarks), 200
+    except Exception as e:
+        app.logger.error(f"Get bookmarks details error: {str(e)}")
+        return jsonify({"error": "Failed to fetch bookmarks details"}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route('/api/applications', methods=['POST'])
+def create_application():
+    """Create a new job application for a seeker."""
+    data = request.get_json() or {}
+    seeker_id = data.get('seeker_id')
+    job_id = data.get('job_id')
+    method = data.get('method', 'Manual')
+
+    if not seeker_id or not job_id:
+        return jsonify({"error": "seeker_id and job_id are required"}), 400
+
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # Check if already applied
+        cur.execute("""
+            SELECT id FROM applications 
+            WHERE jobseeker_id = %s AND job_id = %s
+        """, (seeker_id, job_id))
+        if cur.fetchone():
+            return jsonify({"error": "Already applied for this job"}), 400
+
+        # Fetch seeker's skills
+        cur.execute("""
+            SELECT s.name 
+            FROM jobseeker_skills jsk 
+            JOIN skills s ON jsk.skill_id = s.id 
+            WHERE jsk.jobseeker_id = %s
+        """, (seeker_id,))
+        seeker_skills = [row['name'].lower() for row in cur.fetchall()]
+
+        # Fetch job's skills
+        cur.execute("""
+            SELECT s.name 
+            FROM job_skills js 
+            JOIN skills s ON js.skill_id = s.id 
+            WHERE js.job_id = %s
+        """, (job_id,))
+        job_skills = [row['name'].lower() for row in cur.fetchall()]
+
+        # Calculate match score (defaults to 75 if job has no skills listed)
+        match_score = 75
+        if job_skills:
+            matches = [skill for skill in job_skills if skill in seeker_skills]
+            match_score = round((len(matches) / len(job_skills)) * 100)
+
+        cur.execute("""
+            INSERT INTO applications (jobseeker_id, job_id, status, match_score, method, applied_at, updated_at)
+            VALUES (%s, %s, 'Applied', %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            RETURNING id, job_id, jobseeker_id, status, match_score, method, applied_at AS created_at, updated_at
+        """, (seeker_id, job_id, match_score, method))
+        application = cur.fetchone()
+        conn.commit()
+        cur.close()
+        return jsonify(application), 201
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        app.logger.error(f"Create application error: {str(e)}")
+        return jsonify({"error": "Failed to create application"}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route('/api/applications', methods=['GET'])
+def get_user_applications():
+    """Get all applications submitted by a seeker."""
+    seeker_id = request.args.get('seeker_id')
+    if not seeker_id:
+        return jsonify({"error": "seeker_id is required"}), 400
+
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("""
+            SELECT a.id, a.job_id, a.jobseeker_id, a.status, a.match_score, a.method, a.applied_at AS created_at, a.updated_at,
+                   j.title, 
+                   j.department, 
+                   j.location, 
+                   j.posted_date
+            FROM applications a
+            JOIN jobs j ON a.job_id = j.id
+            WHERE a.jobseeker_id = %s
+            ORDER BY a.applied_at DESC
+        """, (seeker_id,))
+        apps = cur.fetchall()
+        cur.close()
+        return jsonify(apps), 200
+    except Exception as e:
+        app.logger.error(f"Get seeker applications error: {str(e)}")
+        return jsonify({"error": "Failed to fetch applications"}), 500
     finally:
         if conn:
             conn.close()

@@ -1,63 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "./Navbar";
-
-const jobs = [
-  {
-    id: 1,
-    title: "Senior UX Designer",
-    company: "Google Inc.",
-    location: "Naxal, Ktm",
-    match: 98,
-    salary: "40k - 50k /month",
-    bookmarked: false,
-    icon: "🚀",
-    iconBg: "bg-purple-100",
-  },
-  {
-    id: 2,
-    title: "Product Design Lead",
-    company: "Airbnb",
-    location: "Butwal",
-    match: 92,
-    salary: "60k - 80k /month",
-    bookmarked: true,
-    icon: "⬡",
-    iconBg: "bg-purple-100",
-  },
-  {
-    id: 3,
-    title: "Principal UX Engineer",
-    company: "Daraz ,Ktm",
-    location: "Seattle, WA",
-    match: 79,
-    salary: "80k - 85k /month",
-    bookmarked: false,
-    icon: "🧍",
-    iconBg: "bg-purple-100",
-  },
-  {
-    id: 4,
-    title: "Product Design Lead",
-    company: "Airbnb",
-    location: "Imadol, Lalitpur",
-    match: 92,
-    salary: "50k - 70k /month",
-    bookmarked: true,
-    icon: "⬡",
-    iconBg: "bg-purple-100",
-  },
-  {
-    id: 5,
-    title: "Visual UI Architect",
-    company: "Microsoft",
-    location: "Remote",
-    match: 85,
-    salary: "60k - 65k /month",
-    bookmarked: false,
-    icon: "⊞",
-    iconBg: "bg-purple-100",
-  },
-];
 
 const CompanyIcon = ({ job }) => {
   const icons = {
@@ -172,19 +114,23 @@ const BookmarkIcon = ({ filled }) => (
   </svg>
 );
 
-const JobCard = ({ job }) => {
+const JobCard = ({ job, onToggleBookmark, applied, onApply }) => {
   const [bookmarked, setBookmarked] = useState(job.bookmarked);
+
+  useEffect(() => {
+    setBookmarked(job.bookmarked);
+  }, [job.bookmarked]);
 
   return (
     <div
-      onClick={() => window.location.href = '/jobdescription'}
+      onClick={() => window.location.href = `/jobdescription?id=${job.id}`}
       className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col gap-4 hover:shadow-md transition-shadow duration-200 cursor-pointer"
     >
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center flex-shrink-0">
-            <CompanyIcon job={job} />
+          <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center font-bold text-purple-600 text-sm">
+            {job.company ? job.company.slice(0, 2).toUpperCase() : "CF"}
           </div>
           <div>
             <h3 className="font-semibold text-gray-900 text-sm leading-tight">
@@ -198,7 +144,11 @@ const JobCard = ({ job }) => {
         <button
           onClick={(e) => {
             e.stopPropagation(); // Prevents the card click event
-            setBookmarked(!bookmarked);
+            const next = !bookmarked;
+            setBookmarked(next);
+            if (onToggleBookmark) {
+              onToggleBookmark(job.id, next);
+            }
           }}
           className="mt-0.5 hover:scale-110 transition-transform relative z-10"
           aria-label="Bookmark job"
@@ -210,10 +160,10 @@ const JobCard = ({ job }) => {
       {/* AI Match */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
-          <span className="text-xs font-semibold text-purple-600 tracking-wide">
+          <span className="text-xs font-semibold text-purple-600 tracking-wide font-sans">
             AI MATCH
           </span>
-          <span className="text-sm font-bold text-purple-600">
+          <span className="text-sm font-bold text-purple-600 font-sans">
             {job.match}%
           </span>
         </div>
@@ -225,14 +175,23 @@ const JobCard = ({ job }) => {
         </div>
       </div>
 
-      {/* Salary + Apply */}
-      <div className="flex items-center justify-between mt-1">
-        <span className="text-sm text-gray-500">{job.salary}</span>
+      {/* Apply Button only (No Salary) */}
+      <div className="flex justify-end mt-1">
         <button
-          onClick={(e) => e.stopPropagation()} // Prevents the card click event
-          className="bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-5 py-2 rounded-full transition-colors duration-200 relative z-10"
+          onClick={(e) => {
+            e.stopPropagation(); // Prevents the card click event
+            if (!applied && onApply) {
+              onApply(job.id);
+            }
+          }}
+          disabled={applied}
+          className={`text-sm font-semibold px-5 py-2 rounded-full transition-colors duration-200 relative z-10 cursor-pointer font-sans ${
+            applied 
+              ? "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-100" 
+              : "bg-purple-600 hover:bg-purple-700 text-white"
+          }`}
         >
-          Apply Now
+          {applied ? "Applied" : "Apply Now"}
         </button>
       </div>
     </div>
@@ -240,6 +199,154 @@ const JobCard = ({ job }) => {
 };
 
 export default function JobSeekerDashboard() {
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const userId = user?.id;
+  const API = "http://localhost:5000";
+
+  const [allJobs, setAllJobs] = useState([]);
+  const [visibleCount, setVisibleCount] = useState(6);
+  const [loading, setLoading] = useState(true);
+  const [sortType, setSortType] = useState("match-desc");
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [appliedJobIds, setAppliedJobIds] = useState(new Set());
+
+  const handleSort = (type) => {
+    setSortType(type);
+    setShowSortDropdown(false);
+    
+    setAllJobs(prevJobs => {
+      const sorted = [...prevJobs];
+      if (type === "match-desc") {
+        sorted.sort((a, b) => b.match - a.match);
+      } else if (type === "match-asc") {
+        sorted.sort((a, b) => a.match - b.match);
+      } else if (type === "name-az") {
+        sorted.sort((a, b) => a.title.localeCompare(b.title));
+      } else if (type === "name-za") {
+        sorted.sort((a, b) => b.title.localeCompare(a.title));
+      }
+      return sorted;
+    });
+  };
+
+  const handleToggleBookmark = async (jobId, nextBookmarked) => {
+    try {
+      const endpoint = `${API}/api/bookmarks`;
+      const method = nextBookmarked ? "POST" : "DELETE";
+      
+      const res = await fetch(endpoint, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, jobId }),
+      });
+      
+      if (!res.ok) {
+        throw new Error("Failed to update bookmark in database");
+      }
+      
+      setAllJobs(prevJobs => 
+        prevJobs.map(job => job.id === jobId ? { ...job, bookmarked: nextBookmarked } : job)
+      );
+    } catch (err) {
+      console.error("Bookmark toggle error:", err);
+    }
+  };
+
+  useEffect(() => {
+    const fetchRecommendedJobs = async () => {
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
+      try {
+        setLoading(true);
+        const [seekerRes, jobsRes, bookmarksRes, applicationsRes] = await Promise.all([
+          fetch(`${API}/api/jobseekers/${userId}`),
+          fetch(`${API}/api/jobs`),
+          fetch(`${API}/api/bookmarks/${userId}`),
+          fetch(`${API}/api/applications?seeker_id=${userId}`)
+        ]);
+
+        if (!seekerRes.ok || !jobsRes.ok || !bookmarksRes.ok) {
+          throw new Error("Failed to fetch jobs or bookmarks data");
+        }
+
+        const seekerData = await seekerRes.json();
+        const jobsData = await jobsRes.json();
+        const bookmarkedIds = await bookmarksRes.json();
+        
+        let appliedIds = new Set();
+        if (applicationsRes.ok) {
+          const appsData = await applicationsRes.json();
+          appliedIds = new Set((appsData || []).map(app => app.job_id));
+        }
+        setAppliedJobIds(appliedIds);
+
+        const seekerSkills = (seekerData.skills || []).map(s => s.toLowerCase());
+
+        // Process jobs and calculate matches
+        const enrichedJobs = jobsData.map(job => {
+          const jobSkills = (job.skills || []).map(s => s.toLowerCase());
+          
+          let matchPercent = 0;
+          if (jobSkills.length > 0) {
+            const matches = jobSkills.filter(skill => seekerSkills.includes(skill));
+            matchPercent = Math.round((matches.length / jobSkills.length) * 100);
+          } else {
+            // Default match if job has no required skills listed
+            matchPercent = 75;
+          }
+
+          return {
+            ...job,
+            match: matchPercent,
+            company: job.department || "Creative Flow",
+            location: job.location || "Remote",
+            bookmarked: bookmarkedIds.includes(job.id)
+          };
+        });
+
+        // Apply initial sorting
+        if (sortType === "match-desc") {
+          enrichedJobs.sort((a, b) => b.match - a.match);
+        } else if (sortType === "match-asc") {
+          enrichedJobs.sort((a, b) => a.match - b.match);
+        } else if (sortType === "name-az") {
+          enrichedJobs.sort((a, b) => a.title.localeCompare(b.title));
+        } else if (sortType === "name-za") {
+          enrichedJobs.sort((a, b) => b.title.localeCompare(a.title));
+        }
+
+        setAllJobs(enrichedJobs);
+      } catch (err) {
+        console.error("Failed to fetch jobs or bookmarks data", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRecommendedJobs();
+  }, [userId]);
+
+  const handleApply = async (jobId) => {
+    try {
+      const res = await fetch(`${API}/api/applications`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ seeker_id: userId, job_id: jobId }),
+      });
+      if (res.ok) {
+        setAppliedJobIds(prev => {
+          const next = new Set(prev);
+          next.add(jobId);
+          return next;
+        });
+      }
+    } catch (err) {
+      console.error("Application submission failed:", err);
+    }
+  };
+
   return (
     <div>
       {" "}
@@ -272,44 +379,102 @@ export default function JobSeekerDashboard() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button className="flex items-center gap-1.5 border border-gray-200 rounded-full px-4 py-1.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
-                    <svg
-                      className="w-3.5 h-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      viewBox="0 0 24 24"
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowSortDropdown(!showSortDropdown)}
+                      className="flex items-center gap-1.5 border border-gray-200 rounded-full px-4 py-1.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
                     >
-                      <line x1="4" y1="6" x2="20" y2="6" />
-                      <line x1="8" y1="12" x2="20" y2="12" />
-                      <line x1="12" y1="18" x2="20" y2="18" />
-                    </svg>
-                    Filter
-                  </button>
-                  <button className="flex items-center gap-1.5 border border-gray-200 rounded-full px-4 py-1.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
-                    <svg
-                      className="w-3.5 h-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        d="M3 6l9 6 9-6M3 12l9 6 9-6"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                    Sort
-                  </button>
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          d="M3 6l9 6 9-6M3 12l9 6 9-6"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      Sort: {
+                        sortType === "match-desc" ? "Match % (High)" :
+                        sortType === "match-asc" ? "Match % (Low)" :
+                        sortType === "name-az" ? "Name A-Z" :
+                        sortType === "name-za" ? "Name Z-A" : "Default"
+                      }
+                    </button>
+
+                    {showSortDropdown && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setShowSortDropdown(false)} />
+                        <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-lg py-1.5 z-20 text-left">
+                          <button
+                            onClick={() => handleSort("match-desc")}
+                            className={`w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-50 transition-colors cursor-pointer ${sortType === "match-desc" ? "text-violet-600 bg-violet-50/50" : "text-gray-700"}`}
+                          >
+                            Match % (Highest First)
+                          </button>
+                          <button
+                            onClick={() => handleSort("match-asc")}
+                            className={`w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-50 transition-colors cursor-pointer ${sortType === "match-asc" ? "text-violet-600 bg-violet-50/50" : "text-gray-700"}`}
+                          >
+                            Match % (Lowest First)
+                          </button>
+                          <button
+                            onClick={() => handleSort("name-az")}
+                            className={`w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-50 transition-colors cursor-pointer ${sortType === "name-az" ? "text-violet-600 bg-violet-50/50" : "text-gray-700"}`}
+                          >
+                            Name A-Z
+                          </button>
+                          <button
+                            onClick={() => handleSort("name-za")}
+                            className={`w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-50 transition-colors cursor-pointer ${sortType === "name-za" ? "text-violet-600 bg-violet-50/50" : "text-gray-700"}`}
+                          >
+                            Name Z-A
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
 
               {/* Job grid */}
-              <div className="grid grid-cols-3 gap-5">
-                {jobs.map((job) => (
-                  <JobCard key={job.id} job={job} />
-                ))}
-              </div>
+              {loading ? (
+                <div className="py-12 flex flex-col items-center justify-center text-slate-400 gap-3 w-full">
+                  <div className="w-8 h-8 rounded-full border-4 border-violet-100 border-t-violet-600 animate-spin" />
+                  <p className="text-sm font-semibold">Finding the best matches...</p>
+                </div>
+              ) : allJobs.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 font-medium w-full">
+                  No recommended jobs found. Try adding more skills to your profile!
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    {allJobs.slice(0, visibleCount).map((job) => (
+                      <JobCard 
+                        key={job.id} 
+                        job={job} 
+                        onToggleBookmark={handleToggleBookmark} 
+                        applied={appliedJobIds.has(job.id)}
+                        onApply={handleApply}
+                      />
+                    ))}
+                  </div>
+
+                  {visibleCount < allJobs.length && (
+                    <div className="flex justify-center mt-8">
+                      <button
+                        onClick={() => setVisibleCount((prev) => prev + 6)}
+                        className="px-6 py-2.5 bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold rounded-full shadow-sm shadow-violet-100 hover:shadow transition-all duration-200 cursor-pointer"
+                      >
+                        Load More Jobs
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
             {/* Footer */}

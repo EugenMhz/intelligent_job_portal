@@ -1,13 +1,18 @@
 import React, { useState, useMemo } from 'react';
 import { Filter, RotateCcw, AlertCircle, Plus, Sparkles, ChevronRight } from 'lucide-react';
 
-function ApplicantManagement({ selectedJob, jobs, applicants, onToggleShortlist, onNavigate, onSelectApplicant }) {
+function ApplicantManagement({ selectedJob, jobs, applicants, onUpdateStatus, onNavigate, onSelectApplicant }) {
   React.useEffect(() => {
     document.title = 'Applicant Review - Intelligent Portal';
   }, []);
 
-  // Use selected job or default to the first active job
-  const jobContext = selectedJob || jobs.find(j => j.title === 'Senior UX Designer') || jobs[0];
+  // Parse jobId from URL parameters
+  const params = new URLSearchParams(window.location.search);
+  const queryJobId = params.get("jobId");
+  const jobIdFilter = queryJobId ? parseInt(queryJobId) : null;
+
+  // If jobIdFilter is specified, use that specific job. Otherwise, show all.
+  const jobContext = jobIdFilter ? (jobs.find(j => j.id === jobIdFilter) || null) : null;
 
   // Filters State
   const [selectedSkills, setSelectedSkills] = useState([]);
@@ -42,8 +47,9 @@ function ApplicantManagement({ selectedJob, jobs, applicants, onToggleShortlist,
 
   // Filter and Sort Candidates
   const filteredApplicants = useMemo(() => {
-    // Filter applicants that belong to the current job (or if none specify, show all for demo)
-    let list = applicants.filter(app => app.jobId === jobContext.id || !app.jobId);
+    let list = jobContext
+      ? applicants.filter(app => app.jobId === jobContext.id)
+      : [...applicants];
 
     // Filter by Active Tab
     if (activeTab === 'Shortlisted') {
@@ -77,12 +83,20 @@ function ApplicantManagement({ selectedJob, jobs, applicants, onToggleShortlist,
     }
 
     return list;
-  }, [applicants, jobContext.id, activeTab, selectedSkills, minMatchScore, experienceLevel, sortBy]);
+  }, [applicants, jobContext, activeTab, selectedSkills, minMatchScore, experienceLevel, sortBy]);
 
   // Statistics counters
-  const totalCount = applicants.filter(app => app.jobId === jobContext.id || !app.jobId).length;
-  const shortlistedCount = applicants.filter(app => (app.jobId === jobContext.id || !app.jobId) && app.status === 'Shortlisted').length;
-  const interviewingCount = applicants.filter(app => (app.jobId === jobContext.id || !app.jobId) && app.status === 'Interviewing').length;
+  const totalCount = jobContext
+    ? applicants.filter(app => app.jobId === jobContext.id).length
+    : applicants.length;
+
+  const shortlistedCount = jobContext
+    ? applicants.filter(app => app.jobId === jobContext.id && app.status === 'Shortlisted').length
+    : applicants.filter(app => app.status === 'Shortlisted').length;
+
+  const interviewingCount = jobContext
+    ? applicants.filter(app => app.jobId === jobContext.id && app.status === 'Interviewing').length
+    : applicants.filter(app => app.status === 'Interviewing').length;
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -97,10 +111,20 @@ function ApplicantManagement({ selectedJob, jobs, applicants, onToggleShortlist,
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mt-1">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
-              {jobContext.title}
-              <span className="text-sm font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">#{jobContext.id}</span>
+              {jobContext ? (
+                <>
+                  {jobContext.title}
+                  <span className="text-sm font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">#{jobContext.id}</span>
+                </>
+              ) : (
+                "All Applicants"
+              )}
             </h1>
-            <p className="text-slate-500 text-sm mt-1">Reviewing {totalCount} applicants for this position</p>
+            <p className="text-slate-500 text-sm mt-1">
+              {jobContext 
+                ? `Reviewing ${totalCount} applicants for this position` 
+                : `Reviewing ${totalCount} applicants across all positions`}
+            </p>
           </div>
           <button
             className="inline-flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 text-white font-semibold text-sm px-4 py-2.5 rounded-xl transition-all shadow-sm hover:shadow-violet-200 cursor-pointer shrink-0"
@@ -218,6 +242,11 @@ function ApplicantManagement({ selectedJob, jobs, applicants, onToggleShortlist,
                       <span className="text-xs text-slate-500 block">
                         {candidate.role} at <strong className="text-slate-700 font-medium">{candidate.company}</strong>
                       </span>
+                      {!jobContext && candidate.jobTitle && (
+                        <span className="inline-flex items-center gap-1.5 text-xs text-slate-400 mt-1 block">
+                          Applied for: <strong className="text-violet-600 font-semibold">{candidate.jobTitle}</strong>
+                        </span>
+                      )}
                       <div className="flex flex-wrap gap-1.5 pt-2">
                         {candidate.skills.map((skill, sIdx) => (
                           <span
@@ -245,15 +274,16 @@ function ApplicantManagement({ selectedJob, jobs, applicants, onToggleShortlist,
 
                   {/* Actions Column */}
                   <div className="flex flex-col sm:flex-row md:flex-col gap-2 shrink-0 w-full md:w-32">
-                    <button
-                      className={`w-full px-4 py-2 border rounded-xl text-xs font-semibold transition-all cursor-pointer text-center ${candidate.status === 'Shortlisted'
-                        ? 'bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100'
-                        : 'bg-violet-600 hover:bg-violet-700 text-white border-transparent shadow-sm'
-                        }`}
-                      onClick={() => onToggleShortlist(candidate.id)}
+                    <select
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold bg-white text-slate-700 hover:border-slate-300 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100 transition-all cursor-pointer text-center"
+                      value={candidate.status}
+                      onChange={(e) => onUpdateStatus(candidate.id, e.target.value)}
                     >
-                      {candidate.status === 'Shortlisted' ? 'Shortlisted' : 'Shortlist'}
-                    </button>
+                      <option value="Applied">Applied</option>
+                      <option value="Shortlisted">Shortlisted</option>
+                      <option value="Interviewing">Interviewing</option>
+                      <option value="Rejected">Rejected</option>
+                    </select>
                     <button
                       className="w-full px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold transition-all cursor-pointer text-center"
                       onClick={() => onSelectApplicant(candidate)}

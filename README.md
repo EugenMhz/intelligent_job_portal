@@ -55,9 +55,10 @@ All data is persisted in a **PostgreSQL** database, and the system enforces recr
 ### Authentication
 
 - **Signup** — Role selection (Recruiter / Job Seeker), full name, email, password. Email is stored and matched case-insensitively (`LOWER(email)`).
-- **Login** — Validates credentials against PostgreSQL `users` table. Returns user session stored in `localStorage`.
-- **Logout** — Confirmation popup before clearing session.
+- **Login** — Validates credentials against PostgreSQL `users` table. Returns user session stored in `localStorage`. (Remember me checkbox removed).
+- **Forgot Password Recovery** — Token-based reset system with **15-minute token expiry**. Supports local development testing (prints token link to console) and real SMTP email delivery.
 - **Change Password** — Verifies current password against DB, updates to new password on success.
+- **Password Visibility Toggle** — Options to show/hide typed password fields implemented on all Change Password, Reset Password, and Signup screens.
 
 ---
 
@@ -111,15 +112,19 @@ All data is persisted in a **PostgreSQL** database, and the system enforces recr
 intelligent_job_portal/
 ├── database/
 │   ├── schema.sql          # PostgreSQL table definitions
-│   └── seed.sql            # Sample seed data
+│   ├── seed.sql            # Sample seed data
+│   └── migrate_forgot_password.py # Migration to add reset password columns
 ├── flask_server/
-│   └── app.py              # Flask REST API server
+│   └── app.py              # Flask REST API server (with SMTP reset features)
 ├── server/
+│   ├── .env                # App environment configuration (DB + SMTP credentials)
 │   └── index.js            # (Legacy Node server — not used in current stack)
 ├── src/
 │   ├── auth/
 │   │   ├── Login.jsx
-│   │   └── signup.jsx
+│   │   ├── signup.jsx
+│   │   ├── ForgotPassword.jsx # Form to request reset password email
+│   │   └── ResetPassword.jsx  # Form to choose new password with toggles
 │   ├── pages/
 │   │   ├── recruiter/
 │   │   │   ├── RecruiterShell.jsx        # Route shell + data fetching
@@ -129,7 +134,7 @@ intelligent_job_portal/
 │   │   │   ├── ApplicantManagement.jsx   # Applicant list + filters
 │   │   │   ├── ApplicantDetails.jsx      # Individual applicant view
 │   │   │   ├── Profile.jsx               # Recruiter profile + logout popup
-│   │   │   └── ChangePasswordAdmin.jsx   # Change password with DB verify
+│   │   │   └── ChangePasswordAdmin.jsx   # Change password with DB verify & toggles
 │   │   └── jobseeker/
 │   │       ├── Navbar.jsx
 │   │       ├── Profile.jsx               # Logout confirmation popup
@@ -137,7 +142,8 @@ intelligent_job_portal/
 │   │       ├── JobDescription.jsx
 │   │       ├── Application.jsx
 │   │       ├── Bookmark.jsx
-│   │       └── Jobseeker Dashboard.jsx
+│   │       ├── Jobseeker Dashboard.jsx
+│   │       └── ChangePassword.jsx        # Change password with DB verify & toggles
 │   ├── App.jsx
 │   ├── main.jsx
 │   └── index.css
@@ -225,14 +231,22 @@ The Vite dev server runs at **http://localhost:5173**.
 
 ## Environment Variables
 
-Create a `.env` file inside `flask_server/`:
+Create a `.env` file inside `server/` (the Flask server looks for it at `../server/.env`):
 
 ```env
+PORT=5000
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=intelligent_job_portal
 DB_USER=postgres
 DB_PASSWORD=your_password_here
+
+# SMTP Email Configuration
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USE_TLS=True
+MAIL_USERNAME=your-email@gmail.com
+MAIL_PASSWORD=your-16-character-app-password
 ```
 
 > ⚠️ Never commit your `.env` file. It is listed in `.gitignore`.
@@ -246,6 +260,8 @@ DB_PASSWORD=your_password_here
 | `POST` | `/api/auth/signup` | Register a new user |
 | `POST` | `/api/auth/login` | Login and return user session |
 | `PUT` | `/api/auth/change-password` | Change password (verifies old password) |
+| `POST` | `/api/auth/forgot-password` | Request password reset token / email |
+| `POST` | `/api/auth/reset-password` | Reset password using valid token |
 | `GET` | `/api/jobs?recruiterId=X` | Get all jobs for a recruiter |
 | `POST` | `/api/jobs` | Create a new job posting |
 | `PUT` | `/api/jobs/:id` | Update a job posting |

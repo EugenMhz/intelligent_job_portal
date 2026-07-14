@@ -69,7 +69,8 @@ function RecruiterShell() {
             phone: profData.phone || "",
             department: profData.department || "",
             location: profData.location || "",
-            bio: profData.bio || ""
+            bio: profData.bio || "",
+            profile_picture_url: profData.profile_picture_url || ""
           });
         } else {
           // Default fields for newly registered recruiters
@@ -81,7 +82,8 @@ function RecruiterShell() {
             phone: "",
             department: "",
             location: "",
-            bio: ""
+            bio: "",
+            profile_picture_url: ""
           });
         }
 
@@ -179,7 +181,8 @@ function RecruiterShell() {
         phone: data.phone,
         department: data.department,
         location: data.location,
-        bio: data.bio
+        bio: data.bio,
+        profile_picture_url: data.profile_picture_url || user.profile_picture_url || ""
       });
     })
     .catch(err => console.error('Error updating profile:', err));
@@ -216,14 +219,26 @@ function RecruiterShell() {
     handleUpdateApplicantStatus(candidateId, nextStatus);
   };
 
-  const handleNavigate = (pageName) => {
+  const handleNavigate = (pageName, jobId) => {
     if (pageName === 'dashboard') navigate('/recruiter/dashboard');
     else if (pageName === 'jobs') navigate('/recruiter/jobs');
     else if (pageName === 'jobs-all') navigate('/recruiter/jobs?tab=all-postings');
-    else if (pageName === 'applicants') navigate('/recruiter/applicants');
+    else if (pageName === 'applicants') {
+      if (jobId) {
+        navigate(`/recruiter/applicants?jobId=${jobId}`);
+      } else {
+        navigate('/recruiter/applicants');
+      }
+    }
     else if (pageName === 'profile') navigate('/recruiter/profile');
     else if (pageName === 'changepasswordadmin') navigate('/recruiter/changepassword');
-    else if (pageName === 'applicant-details') navigate('/recruiter/applicants');
+    else if (pageName === 'applicant-details') {
+      if (jobId) {
+        navigate(`/recruiter/applicants?jobId=${jobId}`);
+      } else {
+        navigate('/recruiter/applicants');
+      }
+    }
   };
 
   if (!user) {
@@ -249,7 +264,7 @@ function RecruiterShell() {
                 selectedJob={selectedJob} 
                 jobs={jobs} 
                 applicants={applicants} 
-                onToggleShortlist={handleToggleShortlist} 
+                onUpdateStatus={handleUpdateApplicantStatus} 
                 onNavigate={handleNavigate} 
                 onSelectApplicant={(candidate) => navigate(`/recruiter/applicant-details/${candidate.id}`)}
               />

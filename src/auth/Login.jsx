@@ -5,7 +5,6 @@ const Login = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("seeker");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -234,15 +233,10 @@ const Login = () => {
               </div>
 
               {/* Password Field */}
-              <div className="mb-1">
-                <div className="flex justify-end mb-1.5">
-                  <a
-                    href="#"
-                    className="text-xs text-purple-600 font-medium hover:text-purple-700"
-                  >
-                    Forgot?
-                  </a>
-                </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Password
+                </label>
                 <div className="relative">
                   <svg
                     className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
@@ -294,18 +288,17 @@ const Login = () => {
                     )}
                   </button>
                 </div>
+                <div className="flex justify-end mt-1.5">
+                  <Link
+                    to="/forgot-password"
+                    className="text-xs text-purple-600 font-medium hover:text-purple-700"
+                  >
+                    Forgot Password?
+                  </Link>
+                </div>
               </div>
 
-              {/* Remember Me */}
-              <label className="flex items-center gap-2 text-sm text-gray-500 cursor-pointer mb-5 mt-3">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="accent-purple-600 w-3.5 h-3.5"
-                />
-                Remember me
-              </label>
+              <div className="mt-4" />
 
               {/* Sign In Button */}
               <button

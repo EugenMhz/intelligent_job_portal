@@ -23,6 +23,7 @@ const API = "http://localhost:5000";
 const Profile = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
+  const photoInputRef = useRef(null);
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userId = user?.id;
@@ -31,6 +32,8 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
+  const [profilePictureUrl, setProfilePictureUrl] = useState("");
+  const [showPhotoOptions, setShowPhotoOptions] = useState(false);
 
   // Profile fields
   const [name, setName] = useState("");
@@ -80,6 +83,13 @@ const Profile = () => {
       setAutoApplyThreshold(data.auto_apply_match_threshold ?? 70);
       setResumeUrl(data.resume_url || "");
       setSkills(data.skills || []);
+      setProfilePictureUrl(data.profile_picture_url || "");
+      
+      // Update localStorage with photo to keep navbar in sync
+      if (data.profile_picture_url) {
+        const updatedUser = { ...user, profile_picture_url: data.profile_picture_url };
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+      }
     } catch {
       // If profile not found, use auth data as fallback
       setEmail(user?.email || "");
@@ -133,6 +143,66 @@ const Profile = () => {
         }),
       });
     } catch { /* silent */ }
+  };
+
+  // ── Profile photo management ──────────────────────────────────────────────
+  const handlePhotoUploadClick = () => {
+    setShowPhotoOptions(false);
+    photoInputRef.current?.click();
+  };
+
+  const handlePhotoChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("userId", userId);
+    formData.append("role", "seeker");
+
+    try {
+      const res = await fetch(`${API}/api/profile-picture/upload`, {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+      
+      setProfilePictureUrl(data.profile_picture_url);
+      
+      // Sync with localStorage
+      const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+      currentUser.profile_picture_url = data.profile_picture_url;
+      localStorage.setItem("user", JSON.stringify(currentUser));
+      
+      showToast("Profile picture updated!");
+    } catch (err) {
+      showToast(err.message, true);
+    }
+  };
+
+  const handlePhotoDelete = async () => {
+    setShowPhotoOptions(false);
+    try {
+      const res = await fetch(`${API}/api/profile-picture/delete`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, role: "seeker" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Delete failed");
+      
+      setProfilePictureUrl("");
+      
+      // Sync with localStorage
+      const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+      delete currentUser.profile_picture_url;
+      localStorage.setItem("user", JSON.stringify(currentUser));
+      
+      showToast("Profile picture removed!");
+    } catch (err) {
+      showToast(err.message, true);
+    }
   };
 
   // ── Skill management ───────────────────────────────────────────────────────
@@ -268,9 +338,74 @@ const Profile = () => {
             <div className="flex items-start gap-4 flex-1">
               {/* Avatar */}
               <div className="relative shrink-0">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center text-white font-bold text-xl shadow-sm">
-                  {getInitials(name)}
-                </div>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoChange}
+                />
+                <button
+                  onClick={() => setShowPhotoOptions(!showPhotoOptions)}
+                  className="w-16 h-16 rounded-full bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center text-white font-bold text-xl shadow-sm overflow-hidden hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-violet-400 relative group cursor-pointer"
+                  title="Click to manage photo"
+                >
+                  {profilePictureUrl ? (
+                    <img
+                      src={`${API}${profilePictureUrl}`}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    getInitials(name)
+                  )}
+                  {/* Subtle edit overlay on hover */}
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="text-[10px] text-white font-medium">Edit</span>
+                  </div>
+                </button>
+
+                {/* Dropdown overlay/popover */}
+                {showPhotoOptions && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowPhotoOptions(false)}
+                    />
+                    <div className="absolute left-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-lg py-1.5 z-20 animate-fade-in">
+                      {!profilePictureUrl ? (
+                        <button
+                          onClick={handlePhotoUploadClick}
+                          className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer transition-colors"
+                        >
+                          <Plus size={14} /> Upload Photo
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            onClick={handlePhotoUploadClick}
+                            className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer transition-colors"
+                          >
+                            <RefreshCw size={14} /> Change Photo
+                          </button>
+                          <button
+                            onClick={handlePhotoDelete}
+                            className="w-full text-left px-4 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer transition-colors"
+                          >
+                            <Trash2 size={14} /> Remove Photo
+                          </button>
+                        </>
+                      )}
+                      <div className="border-t border-slate-100 my-1" />
+                      <button
+                        onClick={() => setShowPhotoOptions(false)}
+                        className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-400 hover:bg-slate-50 flex items-center gap-2 cursor-pointer transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Info editable block */}

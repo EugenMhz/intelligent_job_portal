@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, CheckCircle, Award, Settings } from 'lucide-react';
+import { User, CheckCircle, Award, Settings, Plus, Trash2, RefreshCw } from 'lucide-react';
 
 function Profile({ user, jobs = [], applicants = [], onUpdateUser, onNavigate }) {
   const navigate = useNavigate();
@@ -18,6 +18,10 @@ function Profile({ user, jobs = [], applicants = [], onUpdateUser, onNavigate })
     bio: user?.bio || '',
   });
 
+  const photoInputRef = React.useRef(null);
+  const [showPhotoOptions, setShowPhotoOptions] = useState(false);
+  const [profilePictureUrl, setProfilePictureUrl] = useState(user?.profile_picture_url || '');
+
   React.useEffect(() => {
     if (user) {
       setFormData({
@@ -29,8 +33,74 @@ function Profile({ user, jobs = [], applicants = [], onUpdateUser, onNavigate })
         location: user.location || '',
         bio: user.bio || '',
       });
+      setProfilePictureUrl(user.profile_picture_url || '');
     }
   }, [user]);
+
+  const handlePhotoUploadClick = () => {
+    setShowPhotoOptions(false);
+    photoInputRef.current?.click();
+  };
+
+  const handlePhotoChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const fileData = new FormData();
+    fileData.append("file", file);
+    fileData.append("userId", user.id);
+    fileData.append("role", "recruiter");
+
+    try {
+      const res = await fetch("http://localhost:5000/api/profile-picture/upload", {
+        method: "POST",
+        body: fileData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+      
+      setProfilePictureUrl(data.profile_picture_url);
+      
+      // Update local storage
+      const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+      currentUser.profile_picture_url = data.profile_picture_url;
+      localStorage.setItem("user", JSON.stringify(currentUser));
+
+      // Propagate update up to RecruiterShell
+      if (onUpdateUser) {
+        onUpdateUser({ ...formData, profile_picture_url: data.profile_picture_url });
+      }
+    } catch (err) {
+      console.error("Photo upload error:", err);
+    }
+  };
+
+  const handlePhotoDelete = async () => {
+    setShowPhotoOptions(false);
+    try {
+      const res = await fetch("http://localhost:5000/api/profile-picture/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id, role: "recruiter" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Delete failed");
+      
+      setProfilePictureUrl("");
+      
+      // Update local storage
+      const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+      delete currentUser.profile_picture_url;
+      localStorage.setItem("user", JSON.stringify(currentUser));
+
+      // Propagate update up to RecruiterShell
+      if (onUpdateUser) {
+        onUpdateUser({ ...formData, profile_picture_url: "" });
+      }
+    } catch (err) {
+      console.error("Photo delete error:", err);
+    }
+  };
 
   const [isSaving, setIsSaving] = useState(false);
   const [showToast, setShowToast] = useState(false);
@@ -89,8 +159,75 @@ function Profile({ user, jobs = [], applicants = [], onUpdateUser, onNavigate })
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Profile Sidebar Info Card */}
         <div className="lg:col-span-1 bg-white border border-slate-200 shadow-sm rounded-2xl p-6 flex flex-col items-center text-center self-start">
-          <div className="w-20 h-20 rounded-full bg-violet-100 border border-violet-200 text-violet-700 flex items-center justify-center font-bold text-3xl uppercase mb-4 ring-4 ring-violet-50">
-            {formData.name.split(' ').map(n => n[0]).join('')}
+          <div className="relative mb-4">
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoChange}
+            />
+            <button
+              onClick={() => setShowPhotoOptions(!showPhotoOptions)}
+              className="w-20 h-20 rounded-full bg-violet-100 border border-violet-200 text-violet-700 flex items-center justify-center font-bold text-3xl uppercase overflow-hidden hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-violet-400 relative group cursor-pointer ring-4 ring-violet-50"
+              title="Click to manage photo"
+            >
+              {profilePictureUrl ? (
+                <img
+                  src={`http://localhost:5000${profilePictureUrl}`}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                formData.name ? formData.name.split(' ').map(n => n[0]).join('').slice(0, 2) : 'R'
+              )}
+              {/* Subtle edit overlay on hover */}
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="text-[10px] text-white font-medium">Edit</span>
+              </div>
+            </button>
+
+            {/* Dropdown overlay/popover */}
+            {showPhotoOptions && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setShowPhotoOptions(false)}
+                />
+                <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-lg py-1.5 z-20 animate-fade-in text-left">
+                  {!profilePictureUrl ? (
+                    <button
+                      onClick={handlePhotoUploadClick}
+                      className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer transition-colors"
+                    >
+                      <Plus size={14} /> Upload Photo
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={handlePhotoUploadClick}
+                        className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer transition-colors"
+                      >
+                        <RefreshCw size={14} /> Change Photo
+                      </button>
+                      <button
+                        onClick={handlePhotoDelete}
+                        className="w-full text-left px-4 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer transition-colors"
+                      >
+                        <Trash2 size={14} /> Remove Photo
+                      </button>
+                    </>
+                  )}
+                  <div className="border-t border-slate-100 my-1" />
+                  <button
+                    onClick={() => setShowPhotoOptions(false)}
+                    className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-400 hover:bg-slate-50 flex items-center gap-2 cursor-pointer transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
           </div>
           <h2 className="text-lg font-bold text-slate-900">{formData.name}</h2>
           <p className="text-xs text-slate-400 font-semibold mt-1">{formData.role}</p>

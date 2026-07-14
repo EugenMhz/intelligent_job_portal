@@ -13,6 +13,12 @@ const Navbar = () => {
   const location = useLocation();
   const currentPath = location.pathname;
 
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const profilePictureUrl = user?.profile_picture_url;
+  const initials = user?.name
+    ? user.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
+    : "";
+
   return (
     <nav className="w-full bg-white border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between gap-8">
@@ -56,26 +62,24 @@ const Navbar = () => {
             })}
           </div>
 
-          {/* Search + avatar */}
-          <div className="flex items-center gap-4 shrink-0">
-            <div className="hidden sm:flex items-center gap-2 bg-violet-50/70 rounded-xl px-4 py-2.5 w-64 focus-within:ring-2 focus-within:ring-violet-300">
-              <Search
-                className="w-4 h-4 text-gray-400 shrink-0"
-                strokeWidth={2}
-              />
-              <input
-                type="text"
-                placeholder="Search opportunities..."
-                className="bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none w-full"
-              />
-            </div>
-
+          {/* Avatar menu */}
+          <div className="flex items-center shrink-0">
             <Link
               to="/profile"
-              className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center overflow-hidden ring-1 ring-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+              className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-100 to-violet-200 border border-violet-200 text-violet-700 flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden ring-1 ring-violet-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
               aria-label="Profile menu"
             >
-              <User className="w-5 h-5 text-gray-500" strokeWidth={2} />
+              {profilePictureUrl ? (
+                <img
+                  src={`http://localhost:5000${profilePictureUrl}`}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
+              ) : initials ? (
+                initials
+              ) : (
+                <User className="w-5 h-5 text-violet-600" strokeWidth={2} />
+              )}
             </Link>
           </div>
         </div>

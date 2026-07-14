@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, CheckCircle, ShieldAlert, KeyRound } from 'lucide-react';
+import { ArrowLeft, CheckCircle, ShieldAlert, KeyRound, Eye, EyeOff } from 'lucide-react';
 
 function ChangePasswordAdmin({ onNavigate }) {
   React.useEffect(() => {
@@ -10,6 +10,9 @@ function ChangePasswordAdmin({ onNavigate }) {
     newPassword: '',
     confirmNewPassword: '',
   });
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
   const [showToast, setShowToast] = useState(false);
@@ -119,44 +122,71 @@ function ChangePasswordAdmin({ onNavigate }) {
 
           <div className="space-y-1.5">
             <label className="block text-sm font-semibold text-slate-700" htmlFor="oldPassword">Old Password</label>
-            <input
-              type="password"
-              id="oldPassword"
-              name="oldPassword"
-              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100 transition-all"
-              value={formData.oldPassword}
-              onChange={handleChange}
-              placeholder="Enter current password"
-              required
-            />
+            <div className="relative">
+              <input
+                type={showOldPassword ? "text" : "password"}
+                id="oldPassword"
+                name="oldPassword"
+                className="w-full pl-4 pr-10 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100 transition-all"
+                value={formData.oldPassword}
+                onChange={handleChange}
+                placeholder="Enter current password"
+                required
+              />
+              <button
+                type="button"
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                onClick={() => setShowOldPassword(!showOldPassword)}
+              >
+                {showOldPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           <div className="space-y-1.5">
             <label className="block text-sm font-semibold text-slate-700" htmlFor="newPassword">New Password</label>
-            <input
-              type="password"
-              id="newPassword"
-              name="newPassword"
-              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100 transition-all"
-              value={formData.newPassword}
-              onChange={handleChange}
-              placeholder="Enter new password (min. 6 chars)"
-              required
-            />
+            <div className="relative">
+              <input
+                type={showNewPassword ? "text" : "password"}
+                id="newPassword"
+                name="newPassword"
+                className="w-full pl-4 pr-10 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100 transition-all"
+                value={formData.newPassword}
+                onChange={handleChange}
+                placeholder="Enter new password (min. 6 chars)"
+                required
+              />
+              <button
+                type="button"
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+              >
+                {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           <div className="space-y-1.5">
             <label className="block text-sm font-semibold text-slate-700" htmlFor="confirmNewPassword">Confirm New Password</label>
-            <input
-              type="password"
-              id="confirmNewPassword"
-              name="confirmNewPassword"
-              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100 transition-all"
-              value={formData.confirmNewPassword}
-              onChange={handleChange}
-              placeholder="Confirm new password"
-              required
-            />
+            <div className="relative">
+              <input
+                type={showConfirmNewPassword ? "text" : "password"}
+                id="confirmNewPassword"
+                name="confirmNewPassword"
+                className="w-full pl-4 pr-10 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100 transition-all"
+                value={formData.confirmNewPassword}
+                onChange={handleChange}
+                placeholder="Confirm new password"
+                required
+              />
+              <button
+                type="button"
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+              >
+                {showConfirmNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">

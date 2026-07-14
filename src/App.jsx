@@ -11,6 +11,8 @@ import JobDescription from "./pages/jobseeker/JobDescription";
 import Profile from "./pages/jobseeker/Profile";
 import ChangePassword from "./pages/jobseeker/ChangePassword";
 import RecruiterShell from "./pages/recruiter/RecruiterShell";
+import ForgotPassword from "./auth/ForgotPassword";
+import ResetPassword from "./auth/ResetPassword";
 
 const appRouter = createBrowserRouter([
   {
@@ -52,6 +54,14 @@ const appRouter = createBrowserRouter([
   {
     path: "/changepassword",
     element: <ChangePassword />,
+  },
+  {
+    path: "/forgot-password",
+    element: <ForgotPassword />,
+  },
+  {
+    path: "/reset-password",
+    element: <ResetPassword />,
   },
   {
     path: "/recruiter/*",

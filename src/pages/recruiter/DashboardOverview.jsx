@@ -27,6 +27,8 @@ function DashboardOverview({ jobs, applicants = [], onNavigate, onSelectJob, onU
     });
   };
 
+  const [visibleJobsCount, setVisibleJobsCount] = React.useState(5);
+
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
@@ -35,12 +37,12 @@ function DashboardOverview({ jobs, applicants = [], onNavigate, onSelectJob, onU
 
   // Calculate dynamic stats from database data
   const totalJobsPosted = jobs.length;
-  const activeApplicants = applicants.length;
-  const recentHires = applicants.filter(app => app.status === 'Shortlisted' || app.status === 'Interviewing').length;
+  const activeApplicants = applicants.filter(app => app.status === 'Applied' || app.status === 'Interviewing').length;
+  const recentHires = applicants.filter(app => app.status === 'Shortlisted').length;
 
   const handleManageJob = (job) => {
     onSelectJob(job);
-    onNavigate('applicants');
+    onNavigate('applicants', job.id);
   };
 
   return (
@@ -66,7 +68,6 @@ function DashboardOverview({ jobs, applicants = [], onNavigate, onSelectJob, onU
         <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-6 relative overflow-hidden group hover:border-violet-200 transition-all duration-300">
           <div className="flex items-center justify-between mb-4 z-10 relative">
             <span className="text-xs font-bold text-slate-400 tracking-wider uppercase">Total Jobs Posted</span>
-            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-100">+12%</span>
           </div>
           <div className="text-3xl font-extrabold text-slate-900 mt-2 z-10 relative">{totalJobsPosted}</div>
           <Briefcase className="absolute right-3 -bottom-3 w-16 h-16 text-slate-100/70 group-hover:text-violet-50/50 group-hover:scale-110 transition-all duration-300 pointer-events-none" />
@@ -76,7 +77,6 @@ function DashboardOverview({ jobs, applicants = [], onNavigate, onSelectJob, onU
         <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-6 relative overflow-hidden group hover:border-violet-200 transition-all duration-300">
           <div className="flex items-center justify-between mb-4 z-10 relative">
             <span className="text-xs font-bold text-slate-400 tracking-wider uppercase">Active Applicants</span>
-            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">+8%</span>
           </div>
           <div className="text-3xl font-extrabold text-slate-900 mt-2 z-10 relative">{activeApplicants.toLocaleString()}</div>
           <Users className="absolute right-3 -bottom-3 w-16 h-16 text-slate-100/70 group-hover:text-emerald-50/50 group-hover:scale-110 transition-all duration-300 pointer-events-none" />
@@ -86,7 +86,6 @@ function DashboardOverview({ jobs, applicants = [], onNavigate, onSelectJob, onU
         <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-6 relative overflow-hidden group hover:border-violet-200 transition-all duration-300">
           <div className="flex items-center justify-between mb-4 z-10 relative">
             <span className="text-xs font-bold text-slate-400 tracking-wider uppercase">Recent Hires</span>
-            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">0%</span>
           </div>
           <div className="text-3xl font-extrabold text-slate-900 mt-2 z-10 relative">{recentHires}</div>
           <UserCheck className="absolute right-3 -bottom-3 w-16 h-16 text-slate-100/70 group-hover:text-slate-200/60 group-hover:scale-110 transition-all duration-300 pointer-events-none" />
@@ -117,85 +116,111 @@ function DashboardOverview({ jobs, applicants = [], onNavigate, onSelectJob, onU
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {jobs.map((job) => (
-                <tr key={job.id} className="hover:bg-slate-50/20 transition-colors">
-                  <td className="px-6 py-4 align-middle">
-                    <div className="flex flex-col">
-                      <span className="font-semibold text-slate-900">{job.title}</span>
-                      <span className="text-xs text-slate-500 mt-0.5">{job.department} • {job.location}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 align-middle">
-                    <span className={`inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
-                      job.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 
-                      job.status === 'Draft' ? 'bg-amber-50 text-amber-700 border-amber-100' : 
-                      'bg-slate-50 text-slate-600 border-slate-200'
-                    }`}>
-                      {job.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 align-middle">
-                    <div className="flex items-center gap-3">
-                      {job.applicantsCount > 0 ? (
-                        <>
-                          <div className="flex -space-x-1.5 overflow-hidden">
-                            {[...Array(Math.min(3, Math.ceil(job.applicantsCount / 5)))].map((_, i) => (
-                              <div 
-                                key={i} 
-                                className="inline-block h-6 w-6 rounded-full border-2 border-white bg-violet-100 text-violet-700 font-bold text-[9px] flex items-center justify-center uppercase shrink-0"
-                              >
-                                {String.fromCharCode(65 + (job.id + i) % 26)}
-                              </div>
-                            ))}
-                            {job.applicantsCount > 3 && (
-                              <div className="inline-block h-6 w-6 rounded-full border-2 border-white bg-slate-100 text-slate-600 font-bold text-[9px] flex items-center justify-center shrink-0">
-                                +{job.applicantsCount - 2}
-                              </div>
-                            )}
-                          </div>
-                          <span className="text-xs font-medium text-slate-500">
-                            {job.applicantsCount} candidate{job.applicantsCount > 1 ? 's' : ''}
+              {jobs.slice(0, visibleJobsCount).map((job) => {
+                const jobApplicants = applicants.filter(app => app.jobId === job.id);
+                const recentJobApplicants = jobApplicants.slice(0, 2);
+                return (
+                  <tr key={job.id} className="hover:bg-slate-50/20 transition-colors">
+                    <td className="px-6 py-4 align-middle">
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-slate-900">{job.title}</span>
+                        <span className="text-xs text-slate-500 mt-0.5">{job.department} • {job.location}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 align-middle">
+                      <span className={`inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
+                        job.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 
+                        job.status === 'Draft' ? 'bg-amber-50 text-amber-700 border-amber-100' : 
+                        'bg-slate-50 text-slate-600 border-slate-200'
+                      }`}>
+                        {job.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 align-middle">
+                      <div className="flex items-center gap-3">
+                        {jobApplicants.length > 0 ? (
+                          <>
+                            <div className="flex -space-x-1.5 overflow-hidden">
+                              {recentJobApplicants.map((app) => (
+                                app.profilePictureUrl ? (
+                                  <img 
+                                    key={app.id}
+                                    src={`http://localhost:5000${app.profilePictureUrl}`} 
+                                    alt={app.name} 
+                                    className="inline-block h-6 w-6 rounded-full border-2 border-white object-cover shrink-0"
+                                    title={app.name}
+                                  />
+                                ) : (
+                                  <div 
+                                    key={app.id} 
+                                    className="inline-block h-6 w-6 rounded-full border-2 border-white bg-violet-100 text-violet-700 font-bold text-[9px] flex items-center justify-center uppercase shrink-0"
+                                    title={app.name}
+                                  >
+                                    {app.name.split(' ').map(n => n[0]).join('')}
+                                  </div>
+                                )
+                              ))}
+                              {jobApplicants.length > 2 && (
+                                <div className="inline-block h-6 w-6 rounded-full border-2 border-white bg-slate-100 text-slate-600 font-bold text-[9px] flex items-center justify-center shrink-0">
+                                  +{jobApplicants.length - 2}
+                                </div>
+                              )}
+                            </div>
+                            <span className="text-xs font-medium text-slate-500">
+                              {jobApplicants.length} candidate{jobApplicants.length > 1 ? 's' : ''}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-xs text-slate-400 italic">
+                            No applicants yet
                           </span>
-                        </>
-                      ) : (
-                        <span className="text-xs text-slate-400 italic">
-                          No applicants yet
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 align-middle">
-                    <span className="text-slate-600 text-xs font-medium">{formatDate(job.posted_date || job.postedDate)}</span>
-                  </td>
-                  <td className="px-6 py-4 align-middle text-right">
-                    <div className="flex justify-end items-center gap-2.5">
-                      <button 
-                        className="text-violet-600 hover:text-violet-700 font-bold text-xs cursor-pointer hover:underline"
-                        onClick={() => setSelectedDetailsJob(job)}
-                      >
-                        View
-                      </button>
-                      <span className="text-slate-200">|</span>
-                      <button 
-                        className="text-slate-600 hover:text-slate-800 font-bold text-xs cursor-pointer hover:underline"
-                        onClick={() => handleStartEditObj(job)}
-                      >
-                        Edit
-                      </button>
-                      <span className="text-slate-200">|</span>
-                      <button 
-                        className="border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold px-3 py-1 rounded-xl transition-all shadow-sm text-xs cursor-pointer"
-                        onClick={() => handleManageJob(job)}
-                      >
-                        Manage
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 align-middle">
+                      <span className="text-slate-600 text-xs font-medium">{formatDate(job.posted_date || job.postedDate)}</span>
+                    </td>
+                    <td className="px-6 py-4 align-middle text-right">
+                      <div className="flex justify-end items-center gap-2.5">
+                        <button 
+                          className="text-violet-600 hover:text-violet-700 font-bold text-xs cursor-pointer hover:underline"
+                          onClick={() => setSelectedDetailsJob(job)}
+                        >
+                          View
+                        </button>
+                        <span className="text-slate-200">|</span>
+                        <button 
+                          className="text-slate-600 hover:text-slate-800 font-bold text-xs cursor-pointer hover:underline"
+                          onClick={() => handleStartEditObj(job)}
+                        >
+                          Edit
+                        </button>
+                        <span className="text-slate-200">|</span>
+                        <button 
+                          className="border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold px-3 py-1 rounded-xl transition-all shadow-sm text-xs cursor-pointer"
+                          onClick={() => handleManageJob(job)}
+                        >
+                          Manage
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
+        
+        {visibleJobsCount < jobs.length && (
+          <div className="flex justify-center py-4 border-t border-slate-100 bg-slate-50/50">
+            <button
+              onClick={() => setVisibleJobsCount(prev => prev + 5)}
+              className="border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold px-5 py-2.5 rounded-xl transition-all shadow-sm text-xs cursor-pointer"
+            >
+              Load More
+            </button>
+          </div>
+        )}
       </div>
 
       {/* View Details Modal */}
