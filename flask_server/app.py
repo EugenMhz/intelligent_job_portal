@@ -1,7 +1,7 @@
 import os
 import re
 import datetime
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from flask_bcrypt import Bcrypt
 import psycopg2
@@ -785,6 +785,55 @@ def upload_cv():
             conn.rollback()
         app.logger.error(f"CV upload DB error: {str(e)}")
         return jsonify({"error": "Failed to save CV data to database"}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+# Serve uploaded CV files
+@app.route('/uploads/<path:filename>', methods=['GET'])
+def serve_upload(filename):
+    """Serve a file from the uploads directory."""
+    return send_from_directory(UPLOAD_FOLDER, filename)
+
+
+@app.route('/api/cv/delete/<int:user_id>', methods=['DELETE'])
+def delete_cv(user_id):
+    """Delete the user's CV file and clear resume_url from DB."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Get the current resume_url to find the file
+        cur.execute("SELECT resume_url FROM jobseeker_profiles WHERE user_id = %s", (user_id,))
+        row = cur.fetchone()
+        if not row or not row['resume_url']:
+            return jsonify({"error": "No CV found for this user"}), 404
+
+        resume_url = row['resume_url']  # e.g. /uploads/1_resume.pdf
+        filename = resume_url.lstrip('/uploads/')
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
+
+        # Delete file from disk if it exists
+        if os.path.exists(filepath):
+            os.remove(filepath)
+
+        # Clear resume_url in DB
+        cur.execute(
+            "UPDATE jobseeker_profiles SET resume_url = NULL, updated_at = NOW() WHERE user_id = %s",
+            (user_id,)
+        )
+        conn.commit()
+        cur.close()
+
+        return jsonify({"message": "CV deleted successfully"}), 200
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        app.logger.error(f"CV delete error: {str(e)}")
+        return jsonify({"error": "Failed to delete CV"}), 500
     finally:
         if conn:
             conn.close()

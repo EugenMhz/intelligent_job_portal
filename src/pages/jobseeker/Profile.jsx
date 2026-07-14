@@ -11,6 +11,9 @@ import {
   Loader2,
   GraduationCap,
   User,
+  Eye,
+  Trash2,
+  RefreshCw,
 } from "lucide-react";
 import Navbar from "./Navbar";
 import { useNavigate } from "react-router-dom";
@@ -46,6 +49,8 @@ const Profile = () => {
   // CV upload state
   const [cvUploading, setCvUploading] = useState(false);
   const [cvProgress, setCvProgress] = useState(0);
+  const [cvDeleting, setCvDeleting] = useState(false);
+  const [showDeleteCvConfirm, setShowDeleteCvConfirm] = useState(false);
 
   // Logout confirm
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -141,6 +146,30 @@ const Profile = () => {
 
   const handleRemoveSkill = (skill) => {
     setSkills((prev) => prev.filter((s) => s !== skill));
+  };
+
+  // ── View CV ──────────────────────────────────────────────────────────────
+  const handleViewCv = () => {
+    if (resumeUrl) {
+      window.open(`${API}${resumeUrl}`, "_blank", "noopener,noreferrer");
+    }
+  };
+
+  // ── Delete CV ─────────────────────────────────────────────────────────────
+  const handleDeleteCv = async () => {
+    setCvDeleting(true);
+    setShowDeleteCvConfirm(false);
+    try {
+      const res = await fetch(`${API}/api/cv/delete/${userId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Delete failed");
+      setResumeUrl("");
+      showToast("CV deleted successfully.");
+    } catch (err) {
+      showToast(err.message, true);
+    } finally {
+      setCvDeleting(false);
+    }
   };
 
   // ── CV re-upload from profile page ────────────────────────────────────────
@@ -443,21 +472,55 @@ const Profile = () => {
 
             {/* Current resume file display */}
             {resumeUrl && (
-              <div className="flex items-center justify-between mt-4 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
-                    <FileText size={16} className="text-red-500" />
+              <div className="mt-4 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
+                      <FileText size={16} className="text-red-500" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-900 truncate">
+                        {getResumeFilename(resumeUrl) || "Uploaded CV"}
+                      </p>
+                      <p className="text-xs text-slate-400 flex items-center gap-1">
+                        <CheckCircle size={10} className="text-emerald-500" /> Saved on your profile
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">
-                      {getResumeFilename(resumeUrl) || "Uploaded CV"}
-                    </p>
-                    <p className="text-xs text-slate-400">Saved on your profile</p>
+
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    {/* View */}
+                    <button
+                      onClick={handleViewCv}
+                      title="View CV"
+                      className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-violet-600 hover:bg-violet-50 border border-slate-200 hover:border-violet-200 rounded-lg px-3 py-1.5 transition-all cursor-pointer"
+                    >
+                      <Eye size={13} /> View
+                    </button>
+
+                    {/* Re-upload */}
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={cvUploading}
+                      title="Replace CV"
+                      className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 rounded-lg px-3 py-1.5 transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      <RefreshCw size={13} className={cvUploading ? "animate-spin" : ""} /> Replace
+                    </button>
+
+                    {/* Delete */}
+                    <button
+                      onClick={() => setShowDeleteCvConfirm(true)}
+                      disabled={cvDeleting}
+                      title="Delete CV"
+                      className="flex items-center gap-1.5 text-xs font-semibold text-rose-500 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-lg px-3 py-1.5 transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {cvDeleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                      {cvDeleting ? "Deleting..." : "Delete"}
+                    </button>
                   </div>
                 </div>
-                <span className="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full flex items-center gap-1">
-                  <CheckCircle size={11} /> Active
-                </span>
               </div>
             )}
           </div>
@@ -488,6 +551,36 @@ const Profile = () => {
           </div>
         </div>
       </div>
+
+      {/* ── Delete CV confirmation modal ── */}
+      {showDeleteCvConfirm && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-xl max-w-sm w-full p-6">
+            <div className="w-12 h-12 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center mb-4">
+              <Trash2 size={22} className="text-rose-500" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 mb-1">Delete your CV?</h3>
+            <p className="text-sm text-slate-500 mb-6">
+              This will permanently remove your CV file and clear it from your profile.
+              Your extracted skills will remain. This cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowDeleteCvConfirm(false)}
+                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold rounded-xl text-sm transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteCv}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-xl text-sm transition-all cursor-pointer shadow-sm shadow-rose-100 flex items-center gap-2"
+              >
+                <Trash2 size={14} /> Delete CV
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Logout confirmation modal ── */}
       {showLogoutConfirm && (
