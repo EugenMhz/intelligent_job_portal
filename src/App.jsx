@@ -2,6 +2,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import "./App.css";
 import Login from "./auth/Login";
 import Signup from "./auth/signup";
+import CVUpload from "./pages/jobseeker/CVUpload";
 import JobSeekerDashboard from "./pages/jobseeker/Jobseeker Dashboard";
 import Job from "./pages/jobseeker/Job";
 import Application from "./pages/jobseeker/Application";
@@ -19,6 +20,10 @@ const appRouter = createBrowserRouter([
   {
     path: "/signup",
     element: <Signup />,
+  },
+  {
+    path: "/cv-upload",
+    element: <CVUpload />,
   },
   {
     path: "/jobseeker",

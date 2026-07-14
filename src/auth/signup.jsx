@@ -49,7 +49,7 @@ const Signup = () => {
       localStorage.setItem("user", JSON.stringify(data));
 
       if (data.role === "seeker") {
-        navigate("/jobseeker");
+        navigate("/cv-upload");
       } else {
         navigate("/recruiter/dashboard");
       }

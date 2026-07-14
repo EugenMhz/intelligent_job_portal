@@ -1,4 +1,5 @@
 import os
+import re
 import datetime
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -6,6 +7,20 @@ from flask_bcrypt import Bcrypt
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
+from werkzeug.utils import secure_filename
+
+# CV parsing libraries
+try:
+    import fitz  # PyMuPDF
+    PYMUPDF_AVAILABLE = True
+except ImportError:
+    PYMUPDF_AVAILABLE = False
+
+try:
+    from docx import Document as DocxDocument
+    DOCX_AVAILABLE = True
+except ImportError:
+    DOCX_AVAILABLE = False
 
 # Initialize Flask App
 app = Flask(__name__)
@@ -591,6 +606,188 @@ def update_jobseeker(seeker_id):
     finally:
         cur.close()
         conn.close()
+
+
+# ==============================================================================
+# CV UPLOAD & SKILL EXTRACTION ROUTES
+# ==============================================================================
+
+# Curated skill keyword list (200+ skills across tech, design, data, soft skills)
+SKILL_KEYWORDS = [
+    # Programming Languages
+    "Python", "JavaScript", "TypeScript", "Java", "C++", "C#", "C", "Go", "Rust",
+    "Ruby", "Swift", "Kotlin", "PHP", "Scala", "R", "MATLAB", "Dart", "Perl",
+    # Web Frontend
+    "React", "Vue", "Angular", "Next.js", "Nuxt.js", "HTML", "CSS", "Sass", "SCSS",
+    "Tailwind", "Bootstrap", "jQuery", "Redux", "Zustand", "GraphQL", "REST",
+    "Webpack", "Vite", "Babel",
+    # Web Backend
+    "Node.js", "Express", "Flask", "Django", "FastAPI", "Spring Boot", "Laravel",
+    "Rails", "ASP.NET", "NestJS", "Hapi", "Koa",
+    # Databases
+    "PostgreSQL", "MySQL", "SQLite", "MongoDB", "Redis", "Cassandra", "DynamoDB",
+    "Elasticsearch", "Oracle", "MSSQL", "Firebase", "Supabase", "PrismaORM",
+    # Cloud & DevOps
+    "AWS", "Azure", "GCP", "Docker", "Kubernetes", "Terraform", "Ansible",
+    "Jenkins", "GitHub Actions", "CircleCI", "Nginx", "Linux", "Bash",
+    "CI/CD", "Helm", "Prometheus", "Grafana",
+    # Data / ML / AI
+    "Machine Learning", "Deep Learning", "NLP", "Computer Vision", "TensorFlow",
+    "PyTorch", "Keras", "scikit-learn", "Pandas", "NumPy", "Matplotlib",
+    "Seaborn", "OpenCV", "Hugging Face", "LangChain", "Spark", "Hadoop",
+    "Tableau", "Power BI", "Data Analysis", "Data Engineering", "ETL",
+    # Mobile
+    "React Native", "Flutter", "Android", "iOS", "Xcode",
+    # Design & UX
+    "Figma", "Adobe XD", "Sketch", "Photoshop", "Illustrator", "InDesign",
+    "UI/UX", "Wireframing", "Prototyping", "User Research",
+    # Security
+    "Cybersecurity", "Penetration Testing", "OWASP", "Cryptography", "OAuth",
+    "JWT", "SSL/TLS",
+    # Version Control & Tools
+    "Git", "GitHub", "GitLab", "Bitbucket", "Jira", "Confluence", "Trello",
+    "Notion", "Slack", "VS Code", "IntelliJ",
+    # Methodologies
+    "Agile", "Scrum", "Kanban", "DevOps", "TDD", "BDD", "Microservices",
+    "RESTful API", "SOAP", "gRPC", "Event-Driven",
+    # Soft Skills
+    "Leadership", "Communication", "Teamwork", "Problem Solving", "Critical Thinking",
+    "Project Management", "Time Management", "Mentoring", "Collaboration",
+]
+
+UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads')
+ALLOWED_EXTENSIONS = {'pdf', 'docx', 'doc'}
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def extract_text_from_pdf(filepath):
+    """Extract text from PDF using PyMuPDF."""
+    if not PYMUPDF_AVAILABLE:
+        return ""
+    try:
+        doc = fitz.open(filepath)
+        text = ""
+        for page in doc:
+            text += page.get_text()
+        doc.close()
+        return text
+    except Exception as e:
+        app.logger.error(f"PDF extraction error: {e}")
+        return ""
+
+def extract_text_from_docx(filepath):
+    """Extract text from DOCX using python-docx."""
+    if not DOCX_AVAILABLE:
+        return ""
+    try:
+        doc = DocxDocument(filepath)
+        return "\n".join([para.text for para in doc.paragraphs])
+    except Exception as e:
+        app.logger.error(f"DOCX extraction error: {e}")
+        return ""
+
+def extract_skills(text):
+    """Match skill keywords against CV text (case-insensitive, whole-word)."""
+    found = []
+    text_lower = text.lower()
+    for skill in SKILL_KEYWORDS:
+        # Build a pattern that matches the skill as a whole token
+        pattern = r'(?<![\w/])' + re.escape(skill.lower()) + r'(?![\w/])'
+        if re.search(pattern, text_lower):
+            found.append(skill)
+    return found
+
+@app.route('/api/cv/upload', methods=['POST'])
+def upload_cv():
+    """Upload CV, extract text, extract skills, store in DB."""
+    if 'file' not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    file = request.files['file']
+    user_id = request.form.get('userId')
+
+    if not user_id:
+        return jsonify({"error": "userId is required"}), 400
+    if file.filename == '':
+        return jsonify({"error": "No file selected"}), 400
+    if not allowed_file(file.filename):
+        return jsonify({"error": "Only PDF and DOCX files are allowed"}), 400
+
+    # Check file size
+    file.seek(0, 2)
+    size = file.tell()
+    file.seek(0)
+    if size > MAX_FILE_SIZE:
+        return jsonify({"error": "File exceeds 5MB limit"}), 400
+
+    # Save file
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    filename = secure_filename(f"{user_id}_{file.filename}")
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    file.save(filepath)
+
+    # Extract text
+    ext = filename.rsplit('.', 1)[1].lower()
+    if ext == 'pdf':
+        text = extract_text_from_pdf(filepath)
+    elif ext in ('docx', 'doc'):
+        text = extract_text_from_docx(filepath)
+    else:
+        text = ""
+
+    # Extract skills
+    extracted_skills = extract_skills(text)
+
+    # Save to DB
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Update resume_url in jobseeker_profiles
+        resume_url = f"/uploads/{filename}"
+        cur.execute(
+            "UPDATE jobseeker_profiles SET resume_url = %s, updated_at = NOW() WHERE user_id = %s",
+            (resume_url, user_id)
+        )
+
+        # Upsert skills and link to jobseeker
+        for skill_name in extracted_skills:
+            # Insert skill into master skills table if not exists
+            cur.execute(
+                "INSERT INTO skills (name) VALUES (%s) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id",
+                (skill_name,)
+            )
+            skill_row = cur.fetchone()
+            skill_id = skill_row['id']
+
+            # Link skill to jobseeker (ignore duplicates)
+            cur.execute(
+                "INSERT INTO jobseeker_skills (jobseeker_id, skill_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+                (user_id, skill_id)
+            )
+
+        conn.commit()
+        cur.close()
+
+        return jsonify({
+            "message": "CV uploaded and skills extracted successfully",
+            "filename": filename,
+            "resume_url": resume_url,
+            "skills": extracted_skills,
+            "skill_count": len(extracted_skills)
+        }), 200
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        app.logger.error(f"CV upload DB error: {str(e)}")
+        return jsonify({"error": "Failed to save CV data to database"}), 500
+    finally:
+        if conn:
+            conn.close()
 
 
 if __name__ == '__main__':
