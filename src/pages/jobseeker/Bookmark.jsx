@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Bookmark,
   ChevronDown,
@@ -9,6 +10,7 @@ import {
   Cloud,
   Terminal,
   BookmarkX,
+  CheckCircle,
 } from "lucide-react";
 import Navbar from "./Navbar";
 
@@ -52,7 +54,7 @@ const formatSavedLabel = (savedAt) => {
   const date = new Date(savedAt);
   const diffTime = Math.abs(new Date() - date);
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
+
   if (diffDays <= 1) {
     return "Saved today";
   }
@@ -64,7 +66,7 @@ const formatSavedLabel = (savedAt) => {
 
 function SavedJobCard({ job, onRemove, applied, onApply }) {
   const { icon: Icon, bg: iconBg, color: iconColor } = getJobIconDetails(job.department);
-  
+
   return (
     <div
       onClick={() => (window.location.href = `/jobdescription?id=${job.id}`)}
@@ -134,11 +136,10 @@ function SavedJobCard({ job, onRemove, applied, onApply }) {
                   }
                 }}
                 disabled={applied}
-                className={`text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors focus:outline-none whitespace-nowrap relative z-10 cursor-pointer ${
-                  applied 
-                    ? "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-100" 
-                    : "bg-violet-600 hover:bg-violet-700 text-white"
-                }`}
+                className={`text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors focus:outline-none whitespace-nowrap relative z-10 cursor-pointer ${applied
+                  ? "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-100"
+                  : "bg-violet-600 hover:bg-violet-700 text-white"
+                  }`}
               >
                 {applied ? "Applied" : "Apply Now"}
               </button>
@@ -151,6 +152,7 @@ function SavedJobCard({ job, onRemove, applied, onApply }) {
 }
 
 function EmptyState() {
+  const navigate = useNavigate();
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-20 flex flex-col items-center text-center px-6">
       <div className="w-16 h-16 rounded-2xl bg-violet-50 flex items-center justify-center mb-5">
@@ -163,7 +165,10 @@ function EmptyState() {
         Bookmark opportunities you like and they'll show up here so you can come
         back to them anytime.
       </p>
-      <button className="bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold px-6 py-2.5 rounded-lg transition-colors">
+      <button
+        onClick={() => navigate("/job")}
+        className="bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold px-6 py-2.5 rounded-lg transition-colors cursor-pointer"
+      >
         Browse Jobs
       </button>
     </div>
@@ -180,6 +185,14 @@ const SavedJobs = () => {
   const [sort, setSort] = useState("Recently Saved");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [appliedJobIds, setAppliedJobIds] = useState(new Set());
+  const [toastMessage, setToastMessage] = useState("");
+
+  const showToast = (message) => {
+    setToastMessage(message);
+    setTimeout(() => {
+      setToastMessage("");
+    }, 3000);
+  };
 
   const removeJob = async (id) => {
     try {
@@ -190,9 +203,11 @@ const SavedJobs = () => {
       });
       if (res.ok) {
         setJobs((prev) => prev.filter((j) => j.id !== id));
+        showToast("Bookmark removed successfully");
       }
     } catch (err) {
       console.error("Failed to delete bookmark:", err);
+      showToast("Failed to remove bookmark");
     }
   };
 
@@ -233,7 +248,7 @@ const SavedJobs = () => {
 
         const seekerData = await seekerRes.json();
         const bookmarksData = await bookmarksRes.json();
-        
+
         let appliedIds = new Set();
         if (applicationsRes.ok) {
           const appsData = await applicationsRes.json();
@@ -289,9 +304,14 @@ const SavedJobs = () => {
           next.add(id);
           return next;
         });
+        showToast("Application Submitted Successfully!");
+      } else {
+        const errorData = await res.json();
+        showToast(errorData.error || "Failed to submit application");
       }
     } catch (err) {
       console.error("Apply job error:", err);
+      showToast("Network error. Please try again.");
     }
   };
 
@@ -300,6 +320,15 @@ const SavedJobs = () => {
       <div>
         <Navbar />
       </div>
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-5 right-5 bg-slate-900 text-white text-sm font-semibold px-6 py-4 rounded-2xl shadow-2xl z-50 flex items-center gap-2 border border-slate-800 animate-slide-up">
+          <CheckCircle className="text-emerald-400 w-5 h-5 shrink-0" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
       <div className="min-h-screen bg-[#F6F5FA] px-8 py-10">
         <div className="max-w-4xl mx-auto">
           <header className="flex items-end justify-between mb-8 flex-wrap gap-3">
@@ -368,10 +397,10 @@ const SavedJobs = () => {
           ) : (
             <div className="space-y-5">
               {jobs.map((job) => (
-                <SavedJobCard 
-                  key={job.id} 
-                  job={job} 
-                  onRemove={removeJob} 
+                <SavedJobCard
+                  key={job.id}
+                  job={job}
+                  onRemove={removeJob}
                   applied={appliedJobIds.has(job.id)}
                   onApply={handleApply}
                 />

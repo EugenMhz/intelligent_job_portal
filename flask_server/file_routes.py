@@ -178,8 +178,22 @@ def upload_cv():
                 (user_id, skill_id)
             )
 
+        # Check if the user has auto-apply enabled
+        cur.execute("SELECT auto_apply FROM jobseeker_profiles WHERE user_id = %s", (user_id,))
+        prof = cur.fetchone()
+        auto_apply_enabled = prof and prof.get('auto_apply')
+
         conn.commit()
         cur.close()
+
+        # Trigger Auto-Apply background worker for this candidate if enabled
+        if auto_apply_enabled:
+            try:
+                import threading
+                from matcher import run_auto_apply_for_candidate
+                threading.Thread(target=run_auto_apply_for_candidate, args=(int(user_id),)).start()
+            except Exception as thread_err:
+                current_app.logger.error(f"Failed to start auto-apply candidate background thread in upload_cv: {thread_err}")
 
         return jsonify({
             "message": "CV uploaded and skills extracted successfully",

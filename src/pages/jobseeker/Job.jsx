@@ -11,6 +11,7 @@ import {
   Database,
   Cloud,
   Terminal,
+  CheckCircle,
 } from "lucide-react";
 import Navbar from "./Navbar";
 
@@ -51,7 +52,7 @@ function MatchBar({ percent }) {
 
 function JobCard({ job, bookmarked, onToggleBookmark, applied, onApply }) {
   const { icon: Icon, bg: iconBg, color: iconColor } = getJobIconDetails(job.department);
-  
+
   return (
     <div
       onClick={() => window.location.href = `/jobdescription?id=${job.id}`}
@@ -95,8 +96,8 @@ function JobCard({ job, bookmarked, onToggleBookmark, applied, onApply }) {
               <span
                 key={s.name}
                 className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${s.matched
-                    ? "bg-emerald-50 text-emerald-700"
-                    : "bg-gray-100 text-gray-600"
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-gray-100 text-gray-600"
                   }`}
               >
                 {s.matched && <Check className="w-3 h-3" strokeWidth={2.5} />}
@@ -116,11 +117,10 @@ function JobCard({ job, bookmarked, onToggleBookmark, applied, onApply }) {
                   }
                 }}
                 disabled={applied}
-                className={`text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors focus:outline-none whitespace-nowrap z-10 relative cursor-pointer ${
-                  applied 
-                    ? "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-100" 
-                    : "bg-violet-600 hover:bg-violet-700 text-white"
-                }`}
+                className={`text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors focus:outline-none whitespace-nowrap z-10 relative cursor-pointer ${applied
+                  ? "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-100"
+                  : "bg-violet-600 hover:bg-violet-700 text-white"
+                  }`}
               >
                 {applied ? "Applied" : "Apply Now"}
               </button>
@@ -143,10 +143,18 @@ const JobBoard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [bookmarks, setBookmarks] = useState(new Set());
   const [loading, setLoading] = useState(true);
-  
+
   const [sort, setSort] = useState("Best Match");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [appliedJobIds, setAppliedJobIds] = useState(new Set());
+  const [toastMessage, setToastMessage] = useState("");
+
+  const showToast = (message) => {
+    setToastMessage(message);
+    setTimeout(() => {
+      setToastMessage("");
+    }, 3000);
+  };
 
   const fetchJobsData = async () => {
     if (!userId) {
@@ -171,7 +179,7 @@ const JobBoard = () => {
       const bookmarkedIds = await bookmarksRes.json();
 
       setBookmarks(new Set(bookmarkedIds));
-      
+
       let appliedIds = new Set();
       if (applicationsRes.ok) {
         const appsData = await applicationsRes.json();
@@ -263,13 +271,13 @@ const JobBoard = () => {
     try {
       const endpoint = `${API}/api/bookmarks`;
       const method = isBookmarked ? "DELETE" : "POST";
-      
+
       const res = await fetch(endpoint, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, jobId: id }),
       });
-      
+
       if (res.ok) {
         setBookmarks(prev => {
           const next = new Set(prev);
@@ -280,9 +288,13 @@ const JobBoard = () => {
           }
           return next;
         });
+        showToast(isBookmarked ? "Removed from Saved Jobs" : "Saved to Bookmarks!");
+      } else {
+        showToast("Failed to update bookmark");
       }
     } catch (err) {
       console.error("Bookmark toggle failed:", err);
+      showToast("Error updating bookmark");
     }
   };
 
@@ -299,9 +311,14 @@ const JobBoard = () => {
           next.add(id);
           return next;
         });
+        showToast("Application Submitted Successfully!");
+      } else {
+        const errorData = await res.json();
+        showToast(errorData.error || "Failed to submit application");
       }
     } catch (err) {
       console.error("Apply job error:", err);
+      showToast("Network error. Please try again.");
     }
   };
 
@@ -310,6 +327,15 @@ const JobBoard = () => {
       <div>
         <Navbar />
       </div>
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-5 right-5 bg-slate-900 text-white text-sm font-semibold px-6 py-4 rounded-2xl shadow-2xl z-50 flex items-center gap-2 border border-slate-800 animate-slide-up">
+          <CheckCircle className="text-emerald-400 w-5 h-5 shrink-0" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
       <div className="min-h-screen bg-[#F6F5FA] flex flex-col">
         <div className="flex-1 max-w-7xl w-full mx-auto px-6 py-8">
           {/* Search bar */}
@@ -376,7 +402,7 @@ const JobBoard = () => {
                 <h1 className="text-lg font-bold text-gray-900 font-sans">
                   {filteredJobs.length} Job{filteredJobs.length === 1 ? "" : "s"} Found
                 </h1>
-                
+
                 <div className="relative">
                   <button
                     onClick={() => setShowSortDropdown(!showSortDropdown)}

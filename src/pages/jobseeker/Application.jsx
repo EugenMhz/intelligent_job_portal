@@ -83,7 +83,7 @@ function ActionsMenu({ open, onToggle, onWithdraw, status }) {
       </button>
       {open && (
         <div className="absolute right-0 top-9 z-10 w-40 bg-white rounded-lg border border-gray-100 shadow-lg py-1.5 text-sm text-left">
-          <button 
+          <button
             disabled={status === "Withdrawn"}
             onClick={() => {
               onToggle();
@@ -108,6 +108,16 @@ const Application = () => {
   const [loading, setLoading] = useState(true);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [toastMessage, setToastMessage] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const PAGE_SIZE = 5;
+  const totalItems = applications.length;
+  const totalPages = Math.ceil(totalItems / PAGE_SIZE) || 1;
+  const activePage = Math.min(currentPage, totalPages);
+
+  const startIndex = (activePage - 1) * PAGE_SIZE;
+  const endIndex = startIndex + PAGE_SIZE;
+  const currentApplications = applications.slice(startIndex, endIndex);
 
   const fetchApplications = async () => {
     if (!userId) {
@@ -140,10 +150,8 @@ const Application = () => {
         body: JSON.stringify({ status: "Withdrawn" }),
       });
       if (res.ok) {
-        setApplications(prev =>
-          prev.map(app => app.id === appId ? { ...app, status: "Withdrawn" } : app)
-        );
-        showToast("🗑️ Application Withdrawn Successfully");
+        setApplications(prev => prev.filter(app => app.id !== appId));
+        showToast("Application Withdrawn Successfully");
       }
     } catch (err) {
       console.error("Withdraw error:", err);
@@ -181,13 +189,21 @@ const Application = () => {
 
       <div className="min-h-screen bg-[#F6F5FA] px-8 py-10">
         <div className="max-w-6xl mx-auto">
-          <header className="mb-8">
-            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight font-sans">
-              My Applications
-            </h1>
-            <p className="text-gray-500 mt-1.5 font-sans">
-              Track and manage your recent job search activity
-            </p>
+          <header className="mb-8 flex items-end justify-between flex-wrap gap-3">
+            <div>
+              <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight font-sans">
+                My Applications
+              </h1>
+              <p className="text-gray-500 mt-1.5 font-sans">
+                Track and manage your recent job search activity
+              </p>
+            </div>
+            {!loading && totalItems > 0 && (
+              <div className="bg-white border border-gray-100 px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-2 shrink-0">
+                <span className="text-sm text-gray-500 font-sans">Total Applications:</span>
+                <span className="text-base font-bold text-violet-600 font-sans">{totalItems}</span>
+              </div>
+            )}
           </header>
 
           {loading ? (
@@ -204,7 +220,7 @@ const Application = () => {
               <p className="text-sm text-gray-500 max-w-xs mb-6 font-sans">
                 You haven't submitted any job applications. Browse jobs and start applying!
               </p>
-              <button 
+              <button
                 onClick={() => window.location.href = "/job"}
                 className="bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold px-6 py-2.5 rounded-lg transition-colors cursor-pointer font-sans"
               >
@@ -235,13 +251,13 @@ const Application = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {applications.map((app, i) => {
+                    {currentApplications.map((app, i) => {
                       const { icon: Icon, bg: iconBg, color: iconColor } = getJobIconDetails(app.department);
                       return (
                         <tr
                           key={app.id}
                           className={
-                            i !== applications.length - 1
+                            i !== currentApplications.length - 1
                               ? "border-b border-gray-100"
                               : ""
                           }
@@ -255,7 +271,7 @@ const Application = () => {
                                 />
                               </div>
                               <div>
-                                <p 
+                                <p
                                   onClick={() => window.location.href = `/jobdescription?id=${app.job_id}`}
                                   className="font-bold text-gray-900 text-[15px] hover:text-violet-600 transition-colors cursor-pointer font-sans"
                                 >
@@ -292,6 +308,56 @@ const Application = () => {
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex-wrap gap-4">
+                  <span className="text-sm text-gray-500 font-sans">
+                    Showing <span className="font-semibold text-gray-900">{startIndex + 1}</span> to{" "}
+                    <span className="font-semibold text-gray-900">
+                      {Math.min(endIndex, totalItems)}
+                    </span>{" "}
+                    of <span className="font-semibold text-gray-900">{totalItems}</span> applications
+                  </span>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={activePage === 1}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-lg border border-gray-200 transition-colors focus:outline-none font-sans cursor-pointer ${activePage === 1
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed border-gray-100"
+                          : "bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300"
+                        }`}
+                    >
+                      Previous
+                    </button>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                      <button
+                        key={pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`w-8 h-8 flex items-center justify-center text-xs font-bold rounded-lg transition-colors focus:outline-none font-sans cursor-pointer ${activePage === pageNum
+                            ? "bg-violet-600 text-white"
+                            : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+                          }`}
+                      >
+                        {pageNum}
+                      </button>
+                    ))}
+
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={activePage === totalPages}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-lg border border-gray-200 transition-colors focus:outline-none font-sans cursor-pointer ${activePage === totalPages
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed border-gray-100"
+                          : "bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300"
+                        }`}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { CheckCircle } from "lucide-react";
 import Navbar from "./Navbar";
 
 const CompanyIcon = ({ job }) => {
@@ -185,11 +186,10 @@ const JobCard = ({ job, onToggleBookmark, applied, onApply }) => {
             }
           }}
           disabled={applied}
-          className={`text-sm font-semibold px-5 py-2 rounded-full transition-colors duration-200 relative z-10 cursor-pointer font-sans ${
-            applied 
-              ? "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-100" 
+          className={`text-sm font-semibold px-5 py-2 rounded-full transition-colors duration-200 relative z-10 cursor-pointer font-sans ${applied
+              ? "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-100"
               : "bg-purple-600 hover:bg-purple-700 text-white"
-          }`}
+            }`}
         >
           {applied ? "Applied" : "Apply Now"}
         </button>
@@ -209,11 +209,19 @@ export default function JobSeekerDashboard() {
   const [sortType, setSortType] = useState("match-desc");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [appliedJobIds, setAppliedJobIds] = useState(new Set());
+  const [toastMessage, setToastMessage] = useState("");
+
+  const showToast = (message) => {
+    setToastMessage(message);
+    setTimeout(() => {
+      setToastMessage("");
+    }, 3000);
+  };
 
   const handleSort = (type) => {
     setSortType(type);
     setShowSortDropdown(false);
-    
+
     setAllJobs(prevJobs => {
       const sorted = [...prevJobs];
       if (type === "match-desc") {
@@ -233,22 +241,24 @@ export default function JobSeekerDashboard() {
     try {
       const endpoint = `${API}/api/bookmarks`;
       const method = nextBookmarked ? "POST" : "DELETE";
-      
+
       const res = await fetch(endpoint, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, jobId }),
       });
-      
+
       if (!res.ok) {
         throw new Error("Failed to update bookmark in database");
       }
-      
-      setAllJobs(prevJobs => 
+
+      setAllJobs(prevJobs =>
         prevJobs.map(job => job.id === jobId ? { ...job, bookmarked: nextBookmarked } : job)
       );
+      showToast(nextBookmarked ? "Saved to Bookmarks!" : "Removed from Saved Jobs");
     } catch (err) {
       console.error("Bookmark toggle error:", err);
+      showToast("Error updating bookmark");
     }
   };
 
@@ -274,7 +284,7 @@ export default function JobSeekerDashboard() {
         const seekerData = await seekerRes.json();
         const jobsData = await jobsRes.json();
         const bookmarkedIds = await bookmarksRes.json();
-        
+
         let appliedIds = new Set();
         if (applicationsRes.ok) {
           const appsData = await applicationsRes.json();
@@ -330,19 +340,31 @@ export default function JobSeekerDashboard() {
           next.add(jobId);
           return next;
         });
+        showToast("🚀 Application Submitted Successfully!");
+      } else {
+        const errorData = await res.json();
+        showToast(errorData.error || "Failed to submit application");
       }
     } catch (err) {
       console.error("Application submission failed:", err);
+      showToast("Network error. Please try again.");
     }
   };
 
   return (
     <div>
-      {" "}
       <div>
-        {" "}
-        <Navbar />{" "}
+        <Navbar />
       </div>
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-5 right-5 bg-slate-900 text-white text-sm font-semibold px-6 py-4 rounded-2xl shadow-2xl z-50 flex items-center gap-2 border border-slate-800 animate-slide-up">
+          <CheckCircle className="text-emerald-400 w-5 h-5 shrink-0" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
       <div className="min-h-screen bg-gray-100 font-sans">
         {/* Outer wrapper */}
         <div className="max-w-6xl mx-auto bg-gray-100 min-h-screen">
@@ -387,9 +409,9 @@ export default function JobSeekerDashboard() {
                       </svg>
                       Sort: {
                         sortType === "match-desc" ? "Match % (High)" :
-                        sortType === "match-asc" ? "Match % (Low)" :
-                        sortType === "name-az" ? "Name A-Z" :
-                        sortType === "name-za" ? "Name Z-A" : "Default"
+                          sortType === "match-asc" ? "Match % (Low)" :
+                            sortType === "name-az" ? "Name A-Z" :
+                              sortType === "name-za" ? "Name Z-A" : "Default"
                       }
                     </button>
 
@@ -442,10 +464,10 @@ export default function JobSeekerDashboard() {
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                     {allJobs.slice(0, visibleCount).map((job) => (
-                      <JobCard 
-                        key={job.id} 
-                        job={job} 
-                        onToggleBookmark={handleToggleBookmark} 
+                      <JobCard
+                        key={job.id}
+                        job={job}
+                        onToggleBookmark={handleToggleBookmark}
                         applied={appliedJobIds.has(job.id)}
                         onApply={handleApply}
                       />

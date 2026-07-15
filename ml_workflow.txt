@@ -1,0 +1,101 @@
+================================================================================
+INTELLIGENT JOB PORTAL - MACHINE LEARNING & AI WORKFLOW
+================================================================================
+
+This document details the step-by-step machine learning and natural language
+processing (NLP) workflow implemented in the platform. It shows how candidate
+resumes are parsed, how semantic matches are computed, and how background threads
+automate application processing.
+
+--------------------------------------------------------------------------------
+STEP 1: RESUME UPLOAD & SKILL PARSING (On-Demand)
+--------------------------------------------------------------------------------
+1. File Selection:
+   - A job seeker uploads their resume in PDF, DOCX, or DOC format.
+2. Text Extraction:
+   - If the file is a PDF: The server uses PyMuPDF (fitz) to extract raw text content.
+   - If the file is a DOCX: The server uses python-docx to extract paragraph-by-paragraph text.
+3. Skill Recognition (Regex-based NLP):
+   - The extracted raw text is converted to lowercase.
+   - The system checks the text against a curated list of over 200 skills.
+   - A regex boundary check is performed for each skill:
+       Pattern: (?<![\w/])skill_name(?![\w/])
+     This lookaround pattern ensures that small/common skill names like "Go" are 
+     not matched incorrectly inside words like "Google" or "Django".
+4. Database Synchronization:
+   - The extracted skills are matched against the database's master `skills` table.
+   - Any missing skills are auto-created.
+   - The seeker's profile in the `jobseeker_skills` table is linked to these skill IDs.
+   - The file's upload path is saved as `resume_url` in the candidate's profile.
+
+--------------------------------------------------------------------------------
+STEP 2: VECTOR FEATURE REPRESENTATION (On-the-Fly / Background)
+--------------------------------------------------------------------------------
+To compute similarity, text profiles are built dynamically for the candidate
+and the job listing:
+
+- Job Seeker Profile Text:
+  Combined from the database columns:
+  "Title: [title] Skills: [comma-separated skills] Education: [education] Experience: [roles and histories description]"
+
+- Job Opportunity Profile Text:
+  Combined from the database columns:
+  "Job Title: [title] in [department] ([location]) Required Skills: [comma-separated skills] Description: [description]"
+
+--------------------------------------------------------------------------------
+STEP 3: DEEP LEARNING EMBEDDINGS (Hugging Face Transformer)
+--------------------------------------------------------------------------------
+1. Lazy-Loading:
+   - The server loads the Sentence-Transformer model 'all-MiniLM-L6-v2'.
+   - To keep start-up times fast, loading only happens when a match score is requested.
+2. Vector Generation:
+   - The text representation of the job seeker is encoded into a 384-dimensional vector.
+   - The text representation of the job description (or list of jobs) is also encoded.
+   - These vector values represent the high-dimensional semantic meaning of the texts.
+
+--------------------------------------------------------------------------------
+STEP 4: SEMANTIC SIMILARITY COMPUTATION (Scoring)
+--------------------------------------------------------------------------------
+1. Cosine Similarity:
+   - The cosine similarity score (typically between 0.0 and 1.0) is computed between 
+     the candidate's profile vector and the job's vector.
+     Formula: Cosine_Similarity(u, v) = (u . v) / (||u|| * ||v||)
+2. Score Scaling:
+   - The raw cosine value is multiplied by 100 and rounded to the nearest integer.
+   - The value is capped to ensure it falls strictly between 0 and 100:
+     match_score = min(100, max(0, round(similarity * 100)))
+3. Dynamic Injection:
+   - When a job seeker views job listings or search results, the match score is 
+     computed on-the-fly and returned in the JSON payload as `match_score` for rendering.
+
+--------------------------------------------------------------------------------
+STEP 5: AUTOMATED BACKGROUND APPLICATION (Auto-Apply)
+--------------------------------------------------------------------------------
+1. Trigger Events:
+   - A recruiter posts a new job or activates a draft job (status = 'Active').
+   - A job seeker enables auto-apply, updates their profile, or uploads a new CV.
+2. Background Thread Dispatch:
+   - Recruiter Trigger: Spawns `run_auto_apply(job_id)` to evaluate all candidates
+     for that single job.
+   - Job Seeker Trigger: Spawns `run_auto_apply_for_candidate(seeker_id)` to evaluate
+     all active jobs for that single candidate.
+3. Active Seeker & Job Filtering:
+   - Checks that candidate has `auto_apply = TRUE` and has not yet applied to the
+     target job(s), preventing duplicate application records.
+4. Threshold Check & Insertion:
+   - Calculates semantic match score using SentenceTransformer model.
+   - Compares score to candidate's custom threshold setting (`auto_apply_match_threshold`).
+   - If score >= threshold: Inserts application with status = 'Applied' and
+     method = 'Auto-Applied'.
+
+--------------------------------------------------------------------------------
+STEP 6: GRACEFUL RECOVERY FALLBACK (Reliability)
+--------------------------------------------------------------------------------
+If PyTorch or Sentence-Transformers fails to initialize or experiences a memory limit:
+- The system catches the error, logs a warning, and switches to fallback mode.
+- Fallback Method (Keyword Matching):
+  - Fetches the candidate's skills and the job's required skills from the DB.
+  - Matches intersecting elements.
+  - Match Score = (Number of matching skills / Number of job skills) * 100.
+  - If the job lists no skills, the score defaults to 75%.
+================================================================================

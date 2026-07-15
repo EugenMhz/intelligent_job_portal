@@ -205,6 +205,16 @@ def update_job(job_id):
             return jsonify({"error": "Job not found"}), 404
 
         conn.commit()
+
+        # Trigger Auto-Apply background worker if status is Active
+        if status == 'Active':
+            try:
+                import threading
+                from matcher import run_auto_apply
+                threading.Thread(target=run_auto_apply, args=(job_id,)).start()
+            except Exception as thread_err:
+                current_app.logger.error(f"Failed to start auto-apply background thread on update_job: {thread_err}")
+
         return jsonify(job), 200
     except Exception as e:
         conn.rollback()

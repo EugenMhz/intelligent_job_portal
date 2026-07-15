@@ -12,6 +12,7 @@ A full-stack intelligent job portal that connects **job seekers** and **recruite
   - [Authentication](#authentication)
   - [Recruiter Portal](#recruiter-portal)
   - [Job Seeker Portal](#job-seeker-portal)
+  - [Machine Learning & AI Process](README_ML_AI.md)
 - [Project Structure](#project-structure)
 - [Database Schema](#database-schema)
 - [Getting Started](#getting-started)
@@ -103,6 +104,17 @@ All data is persisted in a **PostgreSQL** database, and the system enforces recr
 - Dashboard, Jobs listing, Job Description, Applications tracker, Saved Jobs (Bookmarks).
 - Profile page with **logout confirmation popup**.
 - Navbar with search, profile avatar, and nav links — logo on far left, all other items aligned right.
+
+---
+
+### 🧠 Machine Learning & AI Process
+
+The application integrates advanced NLP and automation workflows:
+- **Semantic Job Matching:** Uses Hugging Face's `all-MiniLM-L6-v2` Sentence-Transformers model to calculate precise cosine similarity match scores between candidate profiles and job requirements on the fly.
+- **Auto-Apply Engine:** Spawns asynchronous background threads when active jobs are published, auto-submitting applications for candidates whose matching scores exceed their custom threshold settings.
+- **CV Skill Extraction:** Parses PDF/Word files via PyMuPDF & python-docx, employing boundaries-aware regular expressions to identify and link skills automatically.
+
+> 📖 Read the detailed **[Machine Learning & AI Process Guide (README_ML_AI.md)](README_ML_AI.md)** for detailed engine mechanics, database structure, architecture flows, and verification instructions.
 
 ---
 

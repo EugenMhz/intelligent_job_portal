@@ -287,3 +287,85 @@ def run_auto_apply(job_id):
     finally:
         if conn:
             conn.close()
+
+def run_auto_apply_for_candidate(seeker_id):
+    """
+    Background worker function that runs when a jobseeker updates their profile or uploads a CV.
+    Identifies all Active jobs the candidate has not applied to yet, calculates semantic match scores,
+    and automatically applies to any jobs where the score exceeds their threshold.
+    """
+    from db import get_db_connection
+    from psycopg2.extras import RealDictCursor
+    
+    log_info(f"Auto-Apply Automation triggered for jobseeker ID {seeker_id}")
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # 1. Fetch jobseeker details
+        cur.execute("""
+            SELECT auto_apply, auto_apply_match_threshold 
+            FROM jobseeker_profiles 
+            WHERE user_id = %s
+        """, (seeker_id,))
+        seeker = cur.fetchone()
+        
+        if not seeker or not seeker['auto_apply']:
+            log_info(f"Auto-Apply aborted: Seeker {seeker_id} profile not found or auto_apply is disabled.")
+            return
+            
+        threshold = seeker['auto_apply_match_threshold']
+        
+        # 2. Find all Active jobs the candidate has not applied to yet
+        cur.execute("""
+            SELECT j.*, 
+                   ARRAY(
+                     SELECT s.name 
+                     FROM job_skills js
+                     JOIN skills s ON js.skill_id = s.id
+                     WHERE js.job_id = j.id
+                   ) AS skills
+            FROM jobs j
+            WHERE j.status = 'Active' 
+              AND j.id NOT IN (
+                  SELECT job_id FROM applications WHERE jobseeker_id = %s
+              )
+        """, (seeker_id,))
+        jobs = cur.fetchall()
+        
+        if not jobs:
+            log_info(f"No qualifying active jobs to evaluate for seeker {seeker_id}")
+            return
+            
+        log_info(f"Evaluating auto-apply for seeker {seeker_id} against {len(jobs)} active jobs...")
+        
+        # 3. Calculate semantic match scores for all these jobs
+        enriched_jobs = calculate_matches(cur, seeker_id, jobs)
+        
+        # 4. Apply to jobs exceeding the threshold
+        for job in enriched_jobs:
+            score = job['match_score']
+            if score >= threshold:
+                try:
+                    cur.execute("""
+                        INSERT INTO applications (jobseeker_id, job_id, status, match_score, method, applied_at, updated_at)
+                        VALUES (%s, %s, 'Applied', %s, 'Auto-Applied', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        ON CONFLICT DO NOTHING
+                    """, (seeker_id, job['id'], score))
+                    conn.commit()
+                    log_info(f"Successfully Auto-Applied candidate {seeker_id} to job {job['id']} (Score: {score}%, Threshold: {threshold}%)")
+                except Exception as db_err:
+                    conn.rollback()
+                    log_error(f"Failed to insert auto-application for candidate {seeker_id} to job {job['id']}: {db_err}")
+            else:
+                log_info(f"Candidate {seeker_id} did not meet auto-apply threshold ({score}% < {threshold}%) for job {job['id']}")
+                
+    except Exception as e:
+        log_error(f"Error in auto-apply-for-candidate background worker: {e}")
+        if conn:
+            conn.rollback()
+    finally:
+        if conn:
+            conn.close()
+

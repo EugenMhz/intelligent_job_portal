@@ -143,6 +143,16 @@ def update_jobseeker(seeker_id):
 
         conn.commit()
         row['skills'] = skills
+
+        # Trigger Auto-Apply background worker for this candidate if auto_apply is enabled
+        if auto_apply:
+            try:
+                import threading
+                from matcher import run_auto_apply_for_candidate
+                threading.Thread(target=run_auto_apply_for_candidate, args=(int(seeker_id),)).start()
+            except Exception as thread_err:
+                current_app.logger.error(f"Failed to start auto-apply candidate background thread: {thread_err}")
+
         return jsonify(row), 200
     except Exception as e:
         conn.rollback()

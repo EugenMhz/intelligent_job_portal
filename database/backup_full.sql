@@ -25,7 +25,7 @@ DROP TYPE IF EXISTS application_method CASCADE;
 -- Enums Declarations
 CREATE TYPE user_role AS ENUM ('seeker', 'recruiter');
 CREATE TYPE job_status AS ENUM ('Active', 'Draft', 'Closed');
-CREATE TYPE application_status AS ENUM ('Applied', 'Shortlisted', 'Interviewing', 'Rejected', 'Withdrawn');
+CREATE TYPE application_status AS ENUM ('Applied', 'Shortlisted', 'Interviewing', 'Rejected');
 CREATE TYPE application_method AS ENUM ('Manual', 'Auto-Applied');
 
 -- Users Authentication Table
@@ -404,9 +404,8 @@ INSERT INTO applications (id, job_id, jobseeker_id, status, match_score, method,
 INSERT INTO applications (id, job_id, jobseeker_id, status, match_score, method, applied_at, updated_at) VALUES (12, 3, 8, 'Rejected', 0, 'Manual', '2026-07-14 17:24:44.488684+05:45', '2026-07-14 17:30:22.524034+05:45');
 INSERT INTO applications (id, job_id, jobseeker_id, status, match_score, method, applied_at, updated_at) VALUES (13, 2, 8, 'Shortlisted', 25, 'Manual', '2026-07-14 17:24:49.030380+05:45', '2026-07-14 17:41:38.516617+05:45');
 INSERT INTO applications (id, job_id, jobseeker_id, status, match_score, method, applied_at, updated_at) VALUES (11, 5, 8, 'Interviewing', 75, 'Manual', '2026-07-14 17:24:40.340716+05:45', '2026-07-14 17:46:59.015252+05:45');
-INSERT INTO applications (id, job_id, jobseeker_id, status, match_score, method, applied_at, updated_at) VALUES (16, 5, 11, 'Withdrawn', 75, 'Manual', '2026-07-14 18:47:32.153247+05:45', '2026-07-15 00:09:00.481980+05:45');
-INSERT INTO applications (id, job_id, jobseeker_id, status, match_score, method, applied_at, updated_at) VALUES (14, 3, 11, 'Withdrawn', 75, 'Manual', '2026-07-14 18:47:29.003309+05:45', '2026-07-15 00:09:33.751184+05:45');
-INSERT INTO applications (id, job_id, jobseeker_id, status, match_score, method, applied_at, updated_at) VALUES (15, 2, 11, 'Withdrawn', 50, 'Manual', '2026-07-14 18:47:30.545469+05:45', '2026-07-15 00:09:49.026177+05:45');
+INSERT INTO applications (id, job_id, jobseeker_id, status, match_score, method, applied_at, updated_at) VALUES (14, 3, 11, 'Rejected', 0, 'Manual', '2026-07-14 18:47:29.003309+05:45', '2026-07-15 00:09:33.751184+05:45');
+INSERT INTO applications (id, job_id, jobseeker_id, status, match_score, method, applied_at, updated_at) VALUES (15, 2, 11, 'Shortlisted', 25, 'Manual', '2026-07-14 18:47:30.545469+05:45', '2026-07-15 00:09:49.026177+05:45');
 INSERT INTO applications (id, job_id, jobseeker_id, status, match_score, method, applied_at, updated_at) VALUES (17, 10, 11, 'Applied', 62, 'Manual', '2026-07-15 00:11:49.782326+05:45', '2026-07-15 00:11:49.782326+05:45');
 INSERT INTO applications (id, job_id, jobseeker_id, status, match_score, method, applied_at, updated_at) VALUES (18, 16, 1, 'Applied', 78, 'Auto-Applied', '2026-07-15 00:21:08.934245+05:45', '2026-07-15 00:21:08.934245+05:45');
 INSERT INTO applications (id, job_id, jobseeker_id, status, match_score, method, applied_at, updated_at) VALUES (20, 17, 1, 'Applied', 78, 'Auto-Applied', '2026-07-15 00:21:55.215445+05:45', '2026-07-15 00:21:55.215445+05:45');

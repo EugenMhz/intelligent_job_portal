@@ -20,7 +20,7 @@ DROP TYPE IF EXISTS application_method CASCADE;
 -- Enums Declarations
 CREATE TYPE user_role AS ENUM ('seeker', 'recruiter');
 CREATE TYPE job_status AS ENUM ('Active', 'Draft', 'Closed');
-CREATE TYPE application_status AS ENUM ('Applied', 'Shortlisted', 'Interviewing', 'Rejected', 'Withdrawn');
+CREATE TYPE application_status AS ENUM ('Applied', 'Shortlisted', 'Interviewing', 'Rejected');
 CREATE TYPE application_method AS ENUM ('Manual', 'Auto-Applied');
 
 -- Users Authentication Table
