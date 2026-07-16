@@ -249,7 +249,8 @@ def forgot_password():
         )
         conn.commit()
 
-        reset_link = f"http://localhost:5173/reset-password?token={token}"
+        frontend_origin = request.headers.get("Origin") or "http://localhost:5173"
+        reset_link = f"{frontend_origin}/reset-password?token={token}"
         email_sent = send_reset_email(email, reset_link)
 
         # Log it to console for easy local access
