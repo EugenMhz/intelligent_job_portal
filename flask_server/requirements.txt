@@ -7,6 +7,7 @@ psycopg2-binary
 pymupdf
 python-docx
 flask-bcrypt
+flask-jwt-extended
 python-dotenv
 werkzeug
 gunicorn
