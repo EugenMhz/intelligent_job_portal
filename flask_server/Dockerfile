@@ -14,7 +14,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Hugging Face Spaces routes internal traffic through port 7860
-EXPOSE 7860
-
-CMD ["gunicorn", "--bind", "0.0.0.0:7860", "app:app"]
+# Bind dynamically to the port provided by the host environment (Render uses $PORT, Hugging Face uses 7860/PORT)
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-5000} app:app"]
