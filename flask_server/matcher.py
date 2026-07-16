@@ -40,6 +40,9 @@ def log_error(msg):
 def get_model():
     """Lazy-loads the SentenceTransformer model to prevent slow Flask startup."""
     global _model
+    if os.getenv("DISABLE_ML_MATCHER") == "true" or os.getenv("RENDER") == "true":
+        log_info("ML Matcher is disabled (detected Render or manual disable). Falling back to keyword matching.")
+        return None
     if _model is None:
         try:
             from sentence_transformers import SentenceTransformer
