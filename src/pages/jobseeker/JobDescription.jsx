@@ -20,7 +20,7 @@ const JobDescription = () => {
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userId = user?.id;
-  const API = "http://localhost:5000";
+  const API = (import.meta.env.VITE_API_URL || "http://localhost:5000");
 
   const [job, setJob] = useState(null);
   const [match, setMatch] = useState(75);

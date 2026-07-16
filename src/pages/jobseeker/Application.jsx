@@ -102,7 +102,7 @@ function ActionsMenu({ open, onToggle, onWithdraw, status }) {
 const Application = () => {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userId = user?.id;
-  const API = "http://localhost:5000";
+  const API = (import.meta.env.VITE_API_URL || "http://localhost:5000");
 
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);

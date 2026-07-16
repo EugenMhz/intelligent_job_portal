@@ -7,3 +7,5 @@ __pycache__/
 flask_server/__pycache__/
 scratch/
 flask_server/uploads/
+Report_ST/
+report_st/

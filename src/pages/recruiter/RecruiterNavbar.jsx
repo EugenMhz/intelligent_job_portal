@@ -87,7 +87,7 @@ const RecruiterNavbar = ({ user }) => {
             >
               {user?.profile_picture_url ? (
                 <img
-                  src={`http://localhost:5000${user.profile_picture_url}`}
+                  src={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}${user.profile_picture_url}`}
                   alt="Profile"
                   className="w-full h-full object-cover"
                 />

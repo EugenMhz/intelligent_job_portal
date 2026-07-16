@@ -87,7 +87,7 @@ function ApplicantDetails({ applicant, onUpdateStatus, onNavigate }) {
           <div className="w-20 h-20 rounded-full bg-violet-50 border border-violet-100 text-violet-700 flex items-center justify-center font-bold text-3xl uppercase mb-4 ring-4 ring-violet-50/50 overflow-hidden shrink-0">
             {applicant.profilePictureUrl ? (
               <img 
-                src={`http://localhost:5000${applicant.profilePictureUrl}`} 
+                src={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}${applicant.profilePictureUrl}`} 
                 alt={applicant.name} 
                 className="w-full h-full object-cover"
               />
@@ -115,7 +115,7 @@ function ApplicantDetails({ applicant, onUpdateStatus, onNavigate }) {
           </div>
           {applicant.resumeUrl && (
             <a 
-              href={`http://localhost:5000${applicant.resumeUrl}`} 
+              href={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}${applicant.resumeUrl}`} 
               target="_blank" 
               rel="noopener noreferrer"
               className="w-full mt-5 bg-violet-600 hover:bg-violet-700 text-white font-semibold rounded-xl py-2.5 flex items-center justify-center gap-2 transition-all shadow-sm text-xs cursor-pointer text-center"

@@ -201,7 +201,7 @@ const JobCard = ({ job, onToggleBookmark, applied, onApply }) => {
 export default function JobSeekerDashboard() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userId = user?.id;
-  const API = "http://localhost:5000";
+  const API = (import.meta.env.VITE_API_URL || "http://localhost:5000");
 
   const [allJobs, setAllJobs] = useState([]);
   const [visibleCount, setVisibleCount] = useState(6);

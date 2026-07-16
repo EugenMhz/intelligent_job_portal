@@ -69,7 +69,7 @@ const CVUpload = () => {
       formData.append("file", selectedFile);
       formData.append("userId", userId);
 
-      const res = await fetch("http://localhost:5000/api/cv/upload", {
+      const res = await fetch((import.meta.env.VITE_API_URL || "http://localhost:5000") + "/api/cv/upload", {
         method: "POST",
         body: formData,
       });

@@ -52,7 +52,7 @@ function Profile({ user, jobs = [], applicants = [], onUpdateUser, onNavigate })
     fileData.append("role", "recruiter");
 
     try {
-      const res = await fetch("http://localhost:5000/api/profile-picture/upload", {
+      const res = await fetch((import.meta.env.VITE_API_URL || "http://localhost:5000") + "/api/profile-picture/upload", {
         method: "POST",
         body: fileData,
       });
@@ -78,7 +78,7 @@ function Profile({ user, jobs = [], applicants = [], onUpdateUser, onNavigate })
   const handlePhotoDelete = async () => {
     setShowPhotoOptions(false);
     try {
-      const res = await fetch("http://localhost:5000/api/profile-picture/delete", {
+      const res = await fetch((import.meta.env.VITE_API_URL || "http://localhost:5000") + "/api/profile-picture/delete", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: user.id, role: "recruiter" }),
@@ -174,7 +174,7 @@ function Profile({ user, jobs = [], applicants = [], onUpdateUser, onNavigate })
             >
               {profilePictureUrl ? (
                 <img
-                  src={`http://localhost:5000${profilePictureUrl}`}
+                  src={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}${profilePictureUrl}`}
                   alt="Profile"
                   className="w-full h-full object-cover"
                 />

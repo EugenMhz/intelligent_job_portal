@@ -232,7 +232,7 @@ function ApplicantManagement({ selectedJob, jobs, applicants, onUpdateStatus, on
                     <div className="w-12 h-12 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center font-bold text-base shrink-0 uppercase border border-violet-200/50 overflow-hidden">
                       {candidate.profilePictureUrl ? (
                         <img 
-                          src={`http://localhost:5000${candidate.profilePictureUrl}`} 
+                          src={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}${candidate.profilePictureUrl}`} 
                           alt={candidate.name} 
                           className="w-full h-full object-cover"
                         />

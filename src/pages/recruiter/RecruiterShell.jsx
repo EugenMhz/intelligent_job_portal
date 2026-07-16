@@ -58,7 +58,7 @@ function RecruiterShell() {
     const fetchInitialData = async () => {
       try {
         // Fetch recruiter profile
-        const profRes = await fetch(`http://localhost:5000/api/recruiters/${session.id}`);
+        const profRes = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/recruiters/${session.id}`);
         if (profRes.ok) {
           const profData = await profRes.json();
           setUser({
@@ -88,14 +88,14 @@ function RecruiterShell() {
         }
 
         // Fetch jobs and applicants (filtered by recruiterId)
-        const jobsRes = await fetch(`http://localhost:5000/api/jobs?recruiterId=${session.id}`);
+        const jobsRes = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/jobs?recruiterId=${session.id}`);
         const jobsData = await jobsRes.json();
         setJobs(jobsData);
         if (jobsData.length > 0 && !selectedJob) {
           setSelectedJob(jobsData[0]);
         }
 
-        const applicantsRes = await fetch(`http://localhost:5000/api/applicants?recruiterId=${session.id}`);
+        const applicantsRes = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/applicants?recruiterId=${session.id}`);
         const applicantsData = await applicantsRes.json();
         setApplicants(applicantsData);
       } catch (err) {
@@ -106,7 +106,7 @@ function RecruiterShell() {
   }, [navigate]);
 
   const handleUpdateApplicantStatus = (candidateId, nextStatus) => {
-    fetch(`http://localhost:5000/api/applicants/${candidateId}/status`, {
+    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/applicants/${candidateId}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: nextStatus })
@@ -128,7 +128,7 @@ function RecruiterShell() {
 
   const handlePostJob = (newJob) => {
     if (!user) return;
-    fetch('http://localhost:5000/api/jobs', {
+    fetch((import.meta.env.VITE_API_URL || 'http://localhost:5000') + '/api/jobs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -146,7 +146,7 @@ function RecruiterShell() {
       return res.json();
     })
     .then(() => {
-      return fetch(`http://localhost:5000/api/jobs?recruiterId=${user.id}`);
+      return fetch(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/jobs?recruiterId=${user.id}`);
     })
     .then(res => res.json())
     .then(data => setJobs(data))
@@ -156,7 +156,7 @@ function RecruiterShell() {
   const handleUpdateProfile = (updatedProfile) => {
     if (!user || !user.id) return;
     
-    fetch(`http://localhost:5000/api/recruiters/${user.id}`, {
+    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/recruiters/${user.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -189,7 +189,7 @@ function RecruiterShell() {
   };
 
   const handleUpdateJob = (updatedJob) => {
-    fetch(`http://localhost:5000/api/jobs/${updatedJob.id}`, {
+    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/jobs/${updatedJob.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -205,7 +205,7 @@ function RecruiterShell() {
       return res.json();
     })
     .then(() => {
-      return fetch(`http://localhost:5000/api/jobs?recruiterId=${user.id}`);
+      return fetch(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/jobs?recruiterId=${user.id}`);
     })
     .then(res => res.json())
     .then(data => setJobs(data))

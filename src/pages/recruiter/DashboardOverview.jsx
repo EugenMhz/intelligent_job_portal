@@ -145,7 +145,7 @@ function DashboardOverview({ jobs, applicants = [], onNavigate, onSelectJob, onU
                                 app.profilePictureUrl ? (
                                   <img 
                                     key={app.id}
-                                    src={`http://localhost:5000${app.profilePictureUrl}`} 
+                                    src={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}${app.profilePictureUrl}`} 
                                     alt={app.name} 
                                     className="inline-block h-6 w-6 rounded-full border-2 border-white object-cover shrink-0"
                                     title={app.name}

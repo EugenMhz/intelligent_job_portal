@@ -71,7 +71,7 @@ const Navbar = () => {
             >
               {profilePictureUrl ? (
                 <img
-                  src={`http://localhost:5000${profilePictureUrl}`}
+                  src={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}${profilePictureUrl}`}
                   alt="Profile"
                   className="w-full h-full object-cover"
                 />
