@@ -2,7 +2,10 @@ import os
 import re
 import numpy as np
 
+import threading
+
 _model = None
+_model_lock = threading.Lock()
 
 def log_info(msg):
     """Logs info to Flask logger if in context, otherwise prints to stderr/stdout."""
@@ -44,12 +47,14 @@ def get_model():
         log_info("ML Matcher is disabled (detected Render or manual disable). Falling back to keyword matching.")
         return None
     if _model is None:
-        try:
-            from sentence_transformers import SentenceTransformer
-            log_info("Initializing SentenceTransformer('all-MiniLM-L6-v2')...")
-            _model = SentenceTransformer('all-MiniLM-L6-v2')
-        except Exception as e:
-            log_error(f"Failed to load SentenceTransformer: {e}")
+        with _model_lock:
+            if _model is None:
+                try:
+                    from sentence_transformers import SentenceTransformer
+                    log_info("Initializing SentenceTransformer('all-MiniLM-L6-v2')...")
+                    _model = SentenceTransformer('all-MiniLM-L6-v2')
+                except Exception as e:
+                    log_error(f"Failed to load SentenceTransformer: {e}")
     return _model
 
 def get_seeker_text(cur, seeker_id):

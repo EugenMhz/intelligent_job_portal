@@ -223,3 +223,24 @@ def update_job(job_id):
     finally:
         cur.close()
         conn.close()
+
+
+@job_bp.route('/api/jobs/<int:job_id>', methods=['DELETE'])
+def delete_job(job_id):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("DELETE FROM jobs WHERE id = %s RETURNING *", (job_id,))
+        job = cur.fetchone()
+        if not job:
+            return jsonify({"error": "Job not found"}), 404
+        conn.commit()
+        return jsonify({"message": "Job deleted successfully", "job": job}), 200
+    except Exception as e:
+        conn.rollback()
+        current_app.logger.error(f"Error deleting job: {str(e)}")
+        return jsonify({"error": "Failed to delete job"}), 500
+    finally:
+        cur.close()
+        conn.close()
+

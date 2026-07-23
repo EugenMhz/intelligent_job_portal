@@ -1,7 +1,7 @@
 import React from 'react';
 import { Briefcase, Users, UserCheck, Plus } from 'lucide-react';
 
-function DashboardOverview({ jobs, applicants = [], onNavigate, onSelectJob, onUpdateJob }) {
+function DashboardOverview({ jobs, applicants = [], onNavigate, onSelectJob, onUpdateJob, onDeleteJob }) {
   React.useEffect(() => {
     document.title = 'Recruiter Dashboard - Intelligent Portal';
   }, []);
@@ -197,10 +197,17 @@ function DashboardOverview({ jobs, applicants = [], onNavigate, onSelectJob, onU
                         </button>
                         <span className="text-slate-200">|</span>
                         <button 
+                          className="text-rose-600 hover:text-rose-700 font-bold text-xs cursor-pointer hover:underline"
+                          onClick={() => onDeleteJob(job.id)}
+                        >
+                          Delete
+                        </button>
+                        <span className="text-slate-200">|</span>
+                        <button 
                           className="border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold px-3 py-1 rounded-xl transition-all shadow-sm text-xs cursor-pointer"
                           onClick={() => handleManageJob(job)}
                         >
-                          Manage
+                          View Applicants
                         </button>
                       </div>
                     </td>

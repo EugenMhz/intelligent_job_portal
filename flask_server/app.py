@@ -69,4 +69,11 @@ def health():
 if __name__ == '__main__':
     # Ensure upload folder exists
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    
+    # Pre-warm sentence-transformers model in a background thread to prevent first-request lag
+    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true' or not app.debug:
+        import threading
+        from matcher import get_model
+        threading.Thread(target=get_model, name="ModelPrewarmer", daemon=True).start()
+
     app.run(host='0.0.0.0', port=5000, debug=True)

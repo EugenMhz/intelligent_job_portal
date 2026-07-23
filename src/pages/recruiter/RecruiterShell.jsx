@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useParams } from 'react-router-dom';
+import { AlertTriangle, Trash2 } from 'lucide-react';
 import RecruiterNavbar from './RecruiterNavbar';
 import DashboardOverview from './DashboardOverview';
 import JobPostingManagement from './JobPostingManagement';
@@ -41,6 +42,7 @@ function RecruiterShell() {
   const [jobs, setJobs] = useState([]);
   const [applicants, setApplicants] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
+  const [deletingJobId, setDeletingJobId] = useState(null);
 
   // Authenticate user and load recruiter profile
   useEffect(() => {
@@ -212,6 +214,31 @@ function RecruiterShell() {
     .catch(err => console.error('Error updating job:', err));
   };
 
+  const handleDeleteJob = (jobId) => {
+    setDeletingJobId(jobId);
+  };
+
+  const confirmDeleteJob = () => {
+    if (!deletingJobId) return;
+    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/jobs/${deletingJobId}`, {
+      method: 'DELETE'
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to delete job');
+      return res.json();
+    })
+    .then(() => {
+      setDeletingJobId(null);
+      return fetch(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/jobs?recruiterId=${user.id}`);
+    })
+    .then(res => res.json())
+    .then(data => setJobs(data))
+    .catch(err => {
+      console.error('Error deleting job:', err);
+      setDeletingJobId(null);
+    });
+  };
+
   const handleToggleShortlist = (candidateId) => {
     const candidate = applicants.find(app => app.id === candidateId);
     if (!candidate) return;
@@ -254,9 +281,9 @@ function RecruiterShell() {
       <RecruiterNavbar user={user} />
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Routes>
-          <Route path="/" element={<DashboardOverview jobs={jobs} applicants={applicants} onNavigate={handleNavigate} onSelectJob={setSelectedJob} onUpdateJob={handleUpdateJob} />} />
-          <Route path="dashboard" element={<DashboardOverview jobs={jobs} applicants={applicants} onNavigate={handleNavigate} onSelectJob={setSelectedJob} onUpdateJob={handleUpdateJob} />} />
-          <Route path="jobs" element={<JobPostingManagement jobs={jobs} onPostJob={handlePostJob} onNavigate={handleNavigate} />} />
+          <Route path="/" element={<DashboardOverview jobs={jobs} applicants={applicants} onNavigate={handleNavigate} onSelectJob={setSelectedJob} onUpdateJob={handleUpdateJob} onDeleteJob={handleDeleteJob} />} />
+          <Route path="dashboard" element={<DashboardOverview jobs={jobs} applicants={applicants} onNavigate={handleNavigate} onSelectJob={setSelectedJob} onUpdateJob={handleUpdateJob} onDeleteJob={handleDeleteJob} />} />
+          <Route path="jobs" element={<JobPostingManagement jobs={jobs} onPostJob={handlePostJob} onNavigate={handleNavigate} onDeleteJob={handleDeleteJob} onUpdateJob={handleUpdateJob} />} />
           <Route 
             path="applicants" 
             element={
@@ -275,6 +302,54 @@ function RecruiterShell() {
           <Route path="applicant-details/:id" element={<ApplicantDetailsWrapper applicants={applicants} onUpdateStatus={handleUpdateApplicantStatus} onNavigate={handleNavigate} />} />
         </Routes>
       </main>
+
+      {deletingJobId && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
+          onClick={() => setDeletingJobId(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-7 flex flex-col items-center gap-5"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              animation: "modalPop 0.2s cubic-bezier(0.34,1.56,0.64,1) both",
+            }}
+          >
+            {/* Icon */}
+            <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center">
+              <AlertTriangle className="w-7 h-7 text-red-500" strokeWidth={2} />
+            </div>
+
+            {/* Text */}
+            <div className="text-center">
+              <h2 className="text-xl font-bold text-gray-900 mb-1">Delete job?</h2>
+              <p className="text-sm text-gray-500">
+                Are you sure you want to delete this job listing? This action cannot be undone and will delete all candidate applications associated with it.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 w-full">
+              <button
+                type="button"
+                onClick={() => setDeletingJobId(null)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteJob}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
